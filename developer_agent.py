@@ -552,11 +552,9 @@ def _build_dynamic_context(task: str, project_path: str, context: str, is_fixing
     stable_parts = []
     stable_parts.append(f"## Working Directory\n{wdir}")
 
-    if is_fixing:
-        stable_parts.append("## Project Structure\nProject structure listing omitted for token efficiency during fix cycle. Use list_files or search_code if you need to explore files.")
-    else:
-        project_tree = get_compact_file_list(safe_path)
-        stable_parts.append(f"## Project Structure\n{project_tree}")
+    # Project structure (kept stable across both normal and fix cycles to maximize KV cache hits)
+    project_tree = get_compact_file_list(safe_path)
+    stable_parts.append(f"## Project Structure\n{project_tree}")
 
     # Load rules and profile (static for a given project run)
     try:
@@ -878,7 +876,7 @@ def developer_node(s: ITState) -> dict:
     valid_tools = ["read_file", "view_signatures", "write_file", "edit_file", "run_command",
                    "search_code", "list_files", "write_planning_file", "compact_conversation",
                    "read_conversation_history", "task", "start_async_task", "check_async_task",
-                   "list_async_tasks"]
+                   "list_async_tasks", "search_codebase", "search_past_conversations"]
 
     # Single safety cap — agent should finish naturally in 5-15 turns.
     max_iters = 50
