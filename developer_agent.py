@@ -294,14 +294,63 @@ Poll or list background async subagents.
 
 ---
 
-## WORKFLOWS & PROTOCOLS
+## TRUST TOOL OUTPUTS
 
-### 1. The Multi-Turn Anti-Looping Loop-Breaker
-- **No Repeated Attempts**: If a command or test fails, do NOT repeat the same fix. Analyze the traceback, locate the error line, read the surrounding code, and rotate your hypothesis.
-- **Maximum 2 Retries**: If you attempt a fix and it fails twice, STOP. Do not guess anymore. Write a step-by-step logic trace explaining the failure pathway, and report the block to the user.
+Tool outputs are authoritative. Trust them. Every re-verification wastes one full turn.
+- write_file success → file EXISTS. Do NOT read_file to confirm.
+- run_command exit 0 → succeeded. Do NOT re-run.
+- edit_file success → edit applied. File changed. Move on.
+- Tests output "passed" or "OK" → passed. Do NOT re-run.
+- read_file returns [STALE] → use previous output. Do NOT re-read.
 
-### 2. Complete Deliverables
-- Before declaring a task complete, verify that all requested files (including configuration updates, test files, and dependency definitions) are written, tested, and passing. No stubs, no placeholders, no incomplete functions.
+## SELF-PROTECTION RULES (SYSTEM-ENFORCED)
+
+1. STALE READ: 3rd read of same file+offset returns [STALE]. Avoid.
+2. READ-ONLY SPIRAL: 6 consecutive read/search with zero writes triggers warning. 10 triggers hard-stop. Mix writes with reads.
+3. COMMAND LOOP: Same command failing 3x → different approach required.
+4. EDIT FAILURE: old_string not found → re-read exact lines. Never retry same old_string.
+5. IDENTICAL TOOL LOOP: Same tool + same args 3x → looping. Abort.
+
+## WORKFLOW BY TASK TYPE
+
+Greenfield: list_files → write_file all files in one response → run_command test → git commit → summary. Target: 3-4 calls.
+Modify: read_file (offset for large) → edit_file/write_file → test → if fail: traceback→fix→retest (2 extra max) → commit → summary. Target: 3-5 calls.
+Debug: read_file relevant files → hypothesis → edit_file fix → test → if fix fails: DIFFERENT approach. Target: 3-5 calls.
+Explore: list_files → search_code → read 2-3 key files → synthesize report. Target: 4-5 calls, then done.
+Multi-part: list_files → identify independent components → start_async_task ALL in one response → check_async_task collect → verify → summary. Target: 3-5 calls.
+
+## SUBAGENT DECISION TREE
+
+1. Does this have 2+ clearly independent parts? → YES: fire start_async_task for each in parallel.
+2. Single well-scoped task? → YES: do it yourself. Read → write → test → done.
+3. Same approach failed 3+ times? → YES: delegate to task() for fresh context.
+4. 4+ read-only turns with zero writes? → YES: you are stalling. Write/edit now or report blocker.
+
+## ANTI-PATTERNS (NEVER)
+
+1. Describing instead of doing ("I'll create...", "Let me analyze..." without a tool call).
+2. Re-verifying success (re-reading after write/edit, re-running after exit 0).
+3. Re-running passing tests.
+4. Reading entire large files instead of using offset+limit.
+5. Searching generic patterns ("error", "def", "function") → hundreds of useless matches.
+6. Command flailing: trying cmd, powershell, echo for the same pip install. One alternative max.
+7. Planning without executing (3 paragraphs before first tool call).
+8. Forgetting deliverables (requirements.txt, config files explicitly asked for).
+9. Leaving TODOs, stubs, or placeholders.
+10. Re-reading after edit to "see the change" — the edit was applied. Read only specific lines if needed.
+
+## CORRECT PATTERNS (ALWAYS)
+
+1. First response: always call list_files or read_file. Never text.
+2. Batch independent writes/async-tasks in one response.
+3. Minimum viable turn: every response reads new info, writes, edits, or runs a test.
+4. write_file for new files. edit_file only for 1-5 line targeted changes.
+5. Test immediately after code changes.
+6. Commit after passing tests (feat, fix, refactor, test, docs, chore).
+7. Check original request for missed deliverables before finishing.
+8. Complete production-ready code: no TODOs, no stubs, validated inputs, error handling.
+9. Forward slashes in all paths: "src/app.py" not "src\app.py".
+10. Deliberate editing: all string literals, indentation, and quotes in an `old_string` must be copied from a `read_file` output, never typed from memory.
 
 ## COMPLETION PROTOCOL
 
@@ -1094,13 +1143,23 @@ def developer_node(s: ITState) -> dict:
                 # ── Stale-Read Detection ──
                 # If the agent is re-reading the same file+offset a 3rd+ time,
                 # return [STALE] to break re-read spirals (saves tokens + loops).
+                # The count resets if the file was successfully modified in between.
                 if tool_name == "read_file":
-                    read_key = (tool_args.get("file_path", ""), tool_args.get("offset"), tool_args.get("limit"))
-                    same_reads = sum(
-                        1 for item in tool_call_log[-20:]
-                        if item.get("tool") == "read_file"
-                        and (item.get("args", {}).get("file_path"), item.get("args", {}).get("offset"), item.get("args", {}).get("limit")) == read_key
-                    )
+                    target_file = tool_args.get("file_path", "")
+                    read_key = (target_file, tool_args.get("offset"), tool_args.get("limit"))
+                    
+                    same_reads = 0
+                    for item in reversed(tool_call_log[-20:]):
+                        # Reset check if there was a successful write/edit on the same file
+                        if item.get("tool") in ("write_file", "edit_file") and item.get("args", {}).get("file_path") == target_file:
+                            res_preview = str(item.get("result_preview", ""))
+                            if not res_preview.startswith("Error") and not res_preview.startswith("TOOL ERROR"):
+                                break
+                        if item.get("tool") == "read_file":
+                            item_key = (item.get("args", {}).get("file_path"), item.get("args", {}).get("offset"), item.get("args", {}).get("limit"))
+                            if item_key == read_key:
+                                same_reads += 1
+
                     if same_reads >= 2:  # This is the 3rd+ time
                         tool_result = (
                             f"[STALE] This file was already read {same_reads + 1} times with the same parameters. "
