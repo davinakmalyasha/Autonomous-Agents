@@ -255,11 +255,12 @@ Execute a shell command on the host system.
 
 ---
 
-### 5. search_codebase(query, top_k?)
+### 5. search_codebase(query, top_k?, reindex?)
 Perform a semantic vector search across the codebase.
 - **Parameters**:
   - `query` (string, required): A natural language description of what you are searching for (e.g., "how is user authorization handled?").
   - `top_k` (integer, optional): The number of top results to return (default 10).
+  - `reindex` (boolean, optional): Set to true to reindex the codebase before searching (use this if you have written new files or modified existing ones and want to search the updated codebase).
 - **Guidelines**:
   - Use this at the beginning of tasks to explore a codebase and locate relevant functions, files, or modules when you do not know the exact keywords.
 
@@ -327,13 +328,20 @@ Request manual compaction of the message context history to save tokens.
 Read archived compacted conversation logs.
 - **Parameters**:
   - `file_path` (string, required): Path to the log.
+- **Guidelines**:
+  - Compacted conversation histories are archived under `/conversation_history/history_*.txt` (or shown in system compaction info logs). Use `list_files(path="conversation_history")` to locate them.
 
 ---
 
 ### 13. task(name, task) / start_async_task(name, task)
 Delegate a subtask to a blocking (`task`) or non-blocking (`start_async_task`) subagent.
 - **Parameters**:
-  - `name` (string, required): Descriptive name.
+  - `name` (string, required): The target subagent name. MUST be one of:
+    - `general-purpose` (universal agent with all tools, recommended for general tasks)
+    - `BA-GapAnalyzer`, `BA-Gherkin`, `BA-Diagram` (Business Analyst subagents)
+    - `SA-Database`, `SA-API`, `SA-LayeredArchitecture`, `SA-Resilience`, `SA-DesignSystem`, `SA-SequenceFlow`, `SA-Ecosystem` (System Architect subagents)
+    - `DevOps-Repo-Branch`, `DevOps-Repo-PR`, `DevOps-Pipeline-Docker`, `DevOps-Pipeline-CI`, `DevOps-Deploy`, `DevOps-Issues` (DevOps subagents)
+    - `Analytics-DeliverablesAuditor`, `Analytics-ComplianceChecker`, `Analytics-KpiCalculator`, `Analytics-SdlcReporter` (Analytics subagents)
   - `task` (string, required): Clear instruction details.
 - **Guidelines**:
   - If a task has 2+ independent components, always spawn them in parallel using `start_async_task` in a single response turn to save time.
