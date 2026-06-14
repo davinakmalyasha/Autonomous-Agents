@@ -454,6 +454,39 @@ Modify: read_file (offset for large) → edit_file/write_file → test → if fa
 Debug: read_file relevant files → hypothesis → edit_file fix → test → if fix fails: DIFFERENT approach. Target: 3-5 calls.
 Explore: list_files → search_code → read 2-3 key files → synthesize report. Target: 4-5 calls, then done.
 Multi-part: list_files → identify independent components → start_async_task ALL in one response → check_async_task collect → verify → summary. Target: 3-5 calls.
+## WEB FRAMEWORK PROTOCOLS & COMMON MISTAKES
+
+### 1. Non-Interactive Initialization Recipes
+When initializing a greenfield web application, you must run command-line tools in non-interactive mode. Use these exact recipes:
+* **Next.js**: `npx -y create-next-app@latest ./ --ts --eslint --tailwind --src-dir --app --import-alias "@/*" --use-npm`
+* **Vite**: `npx -y create-vite@latest ./ --template react-ts`
+* **Laravel**: `composer create-project laravel/laravel ./ --prefer-dist`
+* **Express**: `npm init -y && npm install express`
+
+### 2. Background Dev Server & Port Diagnostics
+* **Port Verification**: Before launching a local server on port P, check if it's already in use. On Windows CMD: `netstat -ano | findstr :P`. If in use, either kill the process or choose a different port.
+* **Launch & Verification**: Start the server with `"background": true`. After waiting 2-3 seconds, run a verification request (e.g. `curl -I http://localhost:P` or inspect log outputs) to verify it is running before ending your turn.
+
+### 3. Framework Subagent Coordination Matrix
+* **Frontend Components (React/Next.js/HTML/CSS)**: Delegate to `SA-DesignSystem` or `general-purpose` (scoped specifically to UI construction).
+* **Backend API & Controllers (Laravel/Express)**: Delegate to `SA-API` (routing, controllers, middlewares) and `SA-Database` (migrations, schemas, relation setups).
+* **DevOps & Containers (Docker/CI/CD)**: Delegate to `DevOps-Pipeline-Docker` or `DevOps-Pipeline-CI`.
+
+### 4. Common Tech Stack Mistakes & Prevention Rules
+Ensure you do NOT make these common developer mistakes:
+* **Next.js (App Router)**:
+  - Do NOT mix server and client components: place `"use client"` at the very top of files using hooks (`useState`, `useEffect`, etc.).
+  - Do NOT fetch data using absolute URLs (`http://localhost/api/...`) during build time (`npm run build`) as the dev server is not running during compiling. Use relative paths or fetch database records directly in Server Components.
+* **React/Vite**:
+  - Do NOT run development builds in production: always compile assets using `npm run build` to verify syntax and typescript compiler rules before committing.
+  - Do NOT ignore CORS errors: ensure the Express/Laravel API includes appropriate CORS headers when React calls it.
+* **Express**:
+  - Always register the body-parser middleware: `app.use(express.json())` BEFORE defining any routes.
+  - Always wrap async route handlers in `try/catch` or an async wrapper (e.g. `express-async-handler`) to prevent unhandled promise rejections from crashing the process.
+* **Laravel**:
+  - Do NOT commit controllers that use `$request->all()`: always use strictly validated arrays via `FormRequest` or `$request->validate([...])`.
+  - Always eager-load relations (using `with()`) to prevent N+1 query bottlenecks.
+  - Always declare mass-assignment arrays (`$fillable` or `$guarded`) on Eloquent models.
 
 ## SUBAGENT DECISION TREE (TOKEN & COST EFFICIENCY RULES)
 
