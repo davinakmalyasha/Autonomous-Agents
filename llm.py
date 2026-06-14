@@ -164,12 +164,12 @@ def _get_deepseek_client(model: str, temp: float, role: Optional[str] = None, re
         else:
             kwargs["extra_body"] = {"thinking": {"type": "disabled"}}
     else:
-        # Orchestrator: always use high reasoning effort (max thinking level)
+        # Orchestrator: always use maximum reasoning effort (max thinking level)
         # Subagent heavy: pro + high thinking
         # Standard: flash/medium or pro/medium
         if is_orchestrator:
             kwargs["extra_body"] = {"thinking": {"type": "enabled"}}
-            kwargs["reasoning_effort"] = "high"
+            kwargs["reasoning_effort"] = "max"
         elif is_pro and is_heavy:
             kwargs["extra_body"] = {"thinking": {"type": "enabled"}}
             kwargs["reasoning_effort"] = "high"
@@ -183,10 +183,10 @@ def _get_deepseek_client(model: str, temp: float, role: Optional[str] = None, re
             # Fallback config
             if role == "DeveloperFixing":
                 kwargs["extra_body"] = {"thinking": {"type": "enabled"}}
-                kwargs["reasoning_effort"] = "high"
+                kwargs["reasoning_effort"] = "max"
             elif role == "Developer":
                 kwargs["extra_body"] = {"thinking": {"type": "enabled"}}
-                kwargs["reasoning_effort"] = "high"
+                kwargs["reasoning_effort"] = "max"
             else:
                 kwargs["extra_body"] = {"thinking": {"type": "disabled"}}
 
