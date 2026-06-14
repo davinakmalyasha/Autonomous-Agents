@@ -343,8 +343,10 @@ Delegate a subtask to a blocking (`task`) or non-blocking (`start_async_task`) s
     - `DevOps-Repo-Branch`, `DevOps-Repo-PR`, `DevOps-Pipeline-Docker`, `DevOps-Pipeline-CI`, `DevOps-Deploy`, `DevOps-Issues` (DevOps subagents)
     - `Analytics-DeliverablesAuditor`, `Analytics-ComplianceChecker`, `Analytics-KpiCalculator`, `Analytics-SdlcReporter` (Analytics subagents)
   - `task` (string, required): Clear instruction details.
-- **Guidelines**:
-  - If a task has 2+ independent components, always spawn them in parallel using `start_async_task` in a single response turn to save time.
+- **Guidelines (Token & Cost Efficiency)**:
+  - **Trivial/Single-Step Tasks Banned**: Never spawn a subagent to read a single file, run a single command, or make a simple 1-5 line edit. Doing so wastes thousands of tokens. Do it yourself.
+  - **Parallel Execution**: If a task has 2+ independent components, spawn them in parallel using `start_async_task` in a single response turn to save time.
+  - **Context Isolation**: Spawning subagents keeps the main developer agent's conversation history lean by hiding the subagent's intermediate tool-use turns.
 
 ---
 
@@ -389,12 +391,16 @@ Debug: read_file relevant files → hypothesis → edit_file fix → test → if
 Explore: list_files → search_code → read 2-3 key files → synthesize report. Target: 4-5 calls, then done.
 Multi-part: list_files → identify independent components → start_async_task ALL in one response → check_async_task collect → verify → summary. Target: 3-5 calls.
 
-## SUBAGENT DECISION TREE
+## SUBAGENT DECISION TREE (TOKEN & COST EFFICIENCY RULES)
 
-1. Does this have 2+ clearly independent parts? → YES: fire start_async_task for each in parallel.
-2. Single well-scoped task? → YES: do it yourself. Read → write → test → done.
-3. Same approach failed 3+ times? → YES: delegate to task() for fresh context.
-4. 4+ read-only turns with zero writes? → YES: you are stalling. Write/edit now or report blocker.
+1. **Is the task simple or single-step? (e.g. read a file, run a command, edit 1-10 lines)**
+   - **NO**: Spawning a subagent here is BANNED. It is a massive waste of tokens and money. You must execute it yourself using your own tools.
+2. **Does the task have 2+ completely independent, parallelizable components?**
+   - **YES**: Use `start_async_task` to spawn them in parallel, coordinating their progress, and checking results using `check_async_task`. This divides labor efficiently.
+3. **Is the task highly specialized and requires deep domain-specific analysis? (e.g., Gherkin test writing, Gaps analysis, Docker pipeline creation)**
+   - **YES**: Delegate it to a specialized subagent (e.g. `BA-Gherkin` or `DevOps-Pipeline-Docker`). This isolates the complex history logs and keeps your main conversation context clean.
+4. **Has your own troubleshooting hypothesis failed 3+ times in the same loop?**
+   - **YES**: You can delegate the task to a `general-purpose` subagent to attempt a fresh context loop with isolated execution history.
 
 ## ANTI-PATTERNS (NEVER)
 
