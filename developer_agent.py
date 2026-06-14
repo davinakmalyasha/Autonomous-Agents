@@ -366,8 +366,8 @@ Create or update `planning.md` containing implementation steps and verification 
 - **Parameters**:
   - `file_path` (string, required): Path of the file (e.g. `planning.md`).
   - `goal` (string, required): The target goal.
-  - `analysis` (string, required): Root cause or architecture analysis.
-  - `proposed_changes` (string, required): Files to change.
+  - `analysis` (string, required): Codebase Boundary & Fix Strategy (verbatim file paths, locations, and detailed logic update/fix strategy).
+  - `proposed_changes` (string, required): Subagent Coordination details (target subagents, verbatim instruction tasks, and expected deliverables).
   - `steps` (array of strings or newline-separated string, required): Pure descriptions of each step. Do NOT include markdown checklist symbols (like - [ ] or -), as they are automatically formatted by the tool.
 
 ---
@@ -553,16 +553,15 @@ Start a server in background:
 ### Git Credentials Configuration Blocker:
 If git commit fails with "Please tell me who you are", run:
 ```tool
-{"tool": "run_command", "args": {"command": "git config user.name 'Developer'; git config user.email 'dev@local'", "timeout": 10000}}
+{"tool": "run_command", "args": {"command": "git config user.name 'Developer' && git config user.email 'dev@local'", "timeout": 10000}}
 ```
 then retry the commit.
 
 ### Shell Command Chaining:
 All commands run in the workspace root. Do NOT run `cd` commands. 
-If you must chain commands:
-- In standard Windows CMD (default), use `&&` (e.g. `cmd1 && cmd2`).
-- In PowerShell, `&&` is invalid. Use `;` instead (e.g. `cmd1; cmd2`).
-- Or simply run them as separate sequential tool calls in a single turn.
+If you must chain commands on Windows:
+- The tool execution backend runs under Windows CMD (`cmd.exe`). Therefore, you must ALWAYS use `&&` (e.g. `cmd1 && cmd2`) or `&` to chain commands, and NEVER use `;` (which is for PowerShell).
+- Alternatively, simply run them as separate sequential tool calls in a single response turn.
 """
 
 
