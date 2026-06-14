@@ -42,7 +42,7 @@ def _detect_test_command(project_path: str) -> str:
     py_test_files = [f for f in os.listdir(project_path) 
                      if f.startswith("test_") and f.endswith(".py")]
     if py_test_files:
-        return f"cd /d {project_path} && python -m pytest -x -q"
+        return "python -m pytest -x -q"
     
     # Node.js: npm test
     pkg_json = os.path.join(project_path, "package.json")
@@ -52,7 +52,7 @@ def _detect_test_command(project_path: str) -> str:
             with open(pkg_json, "r") as f:
                 pkg = json.load(f)
             if pkg.get("scripts", {}).get("test"):
-                return f"cd /d {project_path} && npm test"
+                return "npm test"
         except Exception:
             pass
     
@@ -60,11 +60,11 @@ def _detect_test_command(project_path: str) -> str:
     go_test_files = [f for f in os.listdir(project_path) 
                      if f.endswith("_test.go")]
     if go_test_files:
-        return f"cd /d {project_path} && go test ./..."
+        return "go test ./..."
     
     # PHP/Laravel: php artisan test
     if os.path.isfile(os.path.join(project_path, "artisan")):
-        return f"cd /d {project_path} && php artisan test"
+        return "php artisan test"
     
     return ""
 
@@ -304,7 +304,7 @@ Create or update `planning.md` containing implementation steps and verification 
   - `goal` (string, required): The target goal.
   - `analysis` (string, required): Root cause or architecture analysis.
   - `proposed_changes` (string, required): Files to change.
-  - `steps` (array/string, required): List of steps.
+  - `steps` (array of strings or newline-separated string, required): Pure descriptions of each step. Do NOT include markdown checklist symbols (like - [ ] or -), as they are automatically formatted by the tool.
 
 ---
 
@@ -468,9 +468,12 @@ Install a package:
 {"tool": "run_command", "args": {"command": "pip install package-name", "timeout": 60000}}
 ```
 
-Git add and commit:
+Git add and commit (prefer separate sequential commands to be shell-independent):
 ```tool
-{"tool": "run_command", "args": {"command": "git add -A && git commit -m 'feat: description'", "timeout": 10000}}
+{"tool": "run_command", "args": {"command": "git add -A", "timeout": 10000}}
+```
+```tool
+{"tool": "run_command", "args": {"command": "git commit -m 'feat: description'", "timeout": 10000}}
 ```
 
 Git status:
@@ -481,7 +484,22 @@ Git status:
 Start a server in background:
 ```tool
 {"tool": "run_command", "args": {"command": "python app.py", "timeout": 5000, "background": true}}
-```"""
+```
+
+### Git Credentials Configuration Blocker:
+If git commit fails with "Please tell me who you are", run:
+```tool
+{"tool": "run_command", "args": {"command": "git config user.name 'Developer'; git config user.email 'dev@local'", "timeout": 10000}}
+```
+then retry the commit.
+
+### Shell Command Chaining:
+All commands run in the workspace root. Do NOT run `cd` commands. 
+If you must chain commands:
+- In standard Windows CMD (default), use `&&` (e.g. `cmd1 && cmd2`).
+- In PowerShell, `&&` is invalid. Use `;` instead (e.g. `cmd1; cmd2`).
+- Or simply run them as separate sequential tool calls in a single turn.
+"""
 
 
 _EXAMPLE_INTERACTION = ""  # Removed — model knows the format, example wastes tokens
