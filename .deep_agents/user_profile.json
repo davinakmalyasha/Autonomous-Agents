@@ -1,0 +1,8 @@
+{
+  "global_lessons": [],
+  "global_rules": [
+    "When implementing a query optimizer in Python, ensure all classes (such as OrCondition, AndCondition, Condition, ColumnRef) referenced in the optimizer are explicitly imported from their defining modules (e.g. query.py).",
+    "To evaluate JOIN conditions (especially on self-joins), always call join.condition.evaluate_join(left_row, right_row) instead of join.condition.evaluate(combined). Implement evaluate_join(self, left_row, right_row) in Condition, AndCondition, and OrCondition. In Condition.evaluate_join, resolve left-hand side expression from left_row and right-hand side expression from right_row (with fallback logic using a parameter like prefer_left).",
+    "When writing unit tests for LEFT JOIN, calculate the expected row count carefully. For a LEFT JOIN of a left table with 5 rows and a right table with 5 rows: if one left row matches 2 right rows, two left rows match 1 right row each, and two left rows match 0 right rows, the correct expected row count is 6 (2 + 1 + 1 + 1 + 1 = 6), NOT 5. Do not make manual arithmetic errors in test assertions."
+  ]
+}

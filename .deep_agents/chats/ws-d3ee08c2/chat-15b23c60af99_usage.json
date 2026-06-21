@@ -1,0 +1,8 @@
+{
+  "total_input_tokens": 0,
+  "total_output_tokens": 0,
+  "total_cache_hit_tokens": 0,
+  "total_cache_miss_tokens": 0,
+  "total_cost": 0.0,
+  "calls": []
+}

@@ -1,0 +1,9 @@
+=== Message [ai] ===
+I'll explore the codebase, then build a complete priority queue with aging to prevent starvation. Let me start by checking the project state.
+
+```tool
+{"tool": "list_files", "args": {"path": ".", "recursive": true}}
+```
+
+=== Message [human] ===
+[TOOL OK] list_files — listed ~5 entries

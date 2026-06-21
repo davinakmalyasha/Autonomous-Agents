@@ -19,6 +19,10 @@ TASK_CATEGORIES = {
         {"provider": "deepseek", "model": "deepseek-v4-pro"},
         {"provider": "deepseek", "model": "deepseek-v4-flash"},
     ],
+    "critic": [
+        {"provider": "deepseek", "model": "deepseek-v4-pro"},
+        {"provider": "deepseek", "model": "deepseek-v4-flash"},
+    ],
     "standard": [
         {"provider": "deepseek", "model": "deepseek-v4-flash"},
         {"provider": "deepseek", "model": "deepseek-v4-pro"},
@@ -35,6 +39,8 @@ def get_task_category(task_name: str) -> str:
     # Orchestrator roles get pro-first (must follow ```tool format exactly)
     if any(k in name_lower for k in ["developer", "orchestrator"]):
         return "orchestrator"
+    if "critic" in name_lower:
+        return "critic"
     if "fixing" in name_lower:
         return "fixing"
     elif (

@@ -1,0 +1,32 @@
+=== Message [ai] ===
+I'll implement the A* pathfinding solver and accompanying tests.
+
+## Plan
+
+1. Create `astar.py` with `astar(grid, start, end, allow_diagonal=False)` function.
+   - Use `heapq` for priority queue.
+   - Support 4- or 8-direction movement.
+   - Heuristic: Manhattan (abs(dx)+abs(dy)) for 4-directions, Chebyshev (max(abs(dx),abs(dy))) for diagonals.
+   - Return list of tuple coordinates from start to end, or `None` if unreachable.
+2. Create `test_astar.py` with pytest tests:
+   - Simple straight path.
+   - Path with obstacles.
+   - Unreachable goal entirely surrounded by obstacles.
+   - Diagonal movement allowed test.
+   - Edge case: start == end.
+3. Run `pytest test_astar.py -v` to verify.
+
+Implementation is straightforward – no investigation needed. Let's write the files.
+
+```tool
+{
+  "tool": "write_file",
+  "args": {
+    "file_path": "astar.py",
+    "content": "import heapq\n\n\ndef astar(grid, start, end, allow_diagonal=False):\n    \"\"\"\n    A* pathfinding on a 2D grid.\n\n    Args:\n        grid: 2D list of ints, 0=walkable, 1=obstacle.\n        start: (x, y) tuple.\n        end: (x, y) tuple.\n        allow_diagonal: if True, allow 8-direction movement.\n\n    Returns:\n        List of (x, y) tuples from start to end inclusive, or None if no path.\n    \"\"\"\n    if not grid or not grid[0]:\n        return None\n\n    rows = len(grid)\n    cols = len(grid[0])\n\n    # Validate coordinates are within bounds and walkable\n    def in_bounds(x, y):\n        return 0 <= x < cols and 0 <= y < rows\n\n    def is_walkable(x, y):\n        return grid[y][x] == 0\n\n    if not in_bounds(start[0], start[1]) or not is_walkable(start[0], start[1]):\n        return None\n    if not in_bounds(end[0], end[1]) or not is_walkable(end[0], end[1]):\n        return None\n\n    # If start equals end, return immediate path\n    if start == end:\n        return [start]\n\n    # Neighbor directions\n    if allow_diagonal:\n        directions = [\n            (0, 1), (0, -1), (1, 0), (-1, 0),\n            (1, 1), (1, -1), (-1, 1), (-1, -1)\n        ]\n    else:\n        directions = [(0, 1), (0, -1), (1, 0), (-1, 0)]\n\n    # Heuristic function\n    def heuristic(x, y):\n        dx = abs(x - end[0])\n        dy = abs(y - end[1])\n        if allow_diagonal:\n            return max(dx, dy)  # Chebyshev distance\n        else:\n            return dx + dy      # Manhattan distance\n\n    # Open set priority queue: (f_score, g_score, x, y)\n    open_set = []\n    heapq.heappush(open_set, (heuristic(start[0], start[1]), 0, start[0], start[1]))\n\n    # g_score: cost from start to node (default infinity)\n    g_score = {}\n    g_score[(start[0], start[1])] = 0\n\n    # came_from: to reconstruct path\n    came_from = {}\n\n    while open_set:\n        _, g, x, y = heapq.heappop(open_set)\n        current = (x, y)\n\n        if current == end:\n            # Reconstruct path\n            path = []\n            while current in came_from:\n                path.append(current)\n                current = came_from[current]\n            path.append(start)\n            path.reverse()\n            return path\n\n        for dx, dy in directions:\n            nx, ny = x + dx, y + dy\n            neighbor = (nx, ny)\n\n            if not in_bounds(nx, ny) or not is_walkable(nx, ny):\n                continue\n\n            # Diagonal movement cost = sqrt(2), but we approximate as 1 for simplicity (since grid is uniform)\n            tentative_g = g + 1\n\n            if neighbor not in g_score or tentative_g < g_score[neighbor]:\n                g_score[neighbor] = tentative_g\n                f = tentative_g + heuristic(nx, ny)\n                heapq.heappush(open_set, (f, tentative_g, nx, ny))\n                came_from[neighbor] = (x, y)\n\n    # No path found\n    return None\n"
+  }
+}
+```
+
+=== Message [human] ===
+[TOOL OK] write_file — wrote file

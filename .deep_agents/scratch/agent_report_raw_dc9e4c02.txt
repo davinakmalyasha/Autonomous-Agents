@@ -1,0 +1,54 @@
+ERROR: Stuck in an execution loop. The tool 'read_file' with arguments {"file_path": "vault.py"} was called 4 times and repeatedly failed or returned the same output. Last tool result: [FILE] vault.py (lines 1-53 of 53)
+import time
+from cryptography.fernet import Fernet
+
+
+class PasswordVault:
+    """A credential vault with brute-force backoff protection.
+
+    Uses Fernet symmetric encryption.  On each consecutive failed decryption
+    the vault sleeps for an exponentially increasing delay (starting at 0.1 s,
+    doubling each failure, capped at 5 s).  A successful decryption resets
+    the failure counter.
+    """
+
+    def __init__(self, key: bytes | None = None):
+        if key is None:
+            key = Fernet.generate_key()
+        self._fernet = Fernet(key)
+        self._failure_count = 0
+        self._base_delay = 0.1          # seconds
+        self._max_delay = 5.0           # seconds
+
+    @property
+    def key(self) -> bytes:
+        return self._fernet._encrypting_key
+
+    def encrypt(self, plaintext: str) -> str:
+        """Encrypt a string and return a base64 token."""
+        return self._fernet.encrypt(plaintext.encode()).decode()
+
+    def decrypt(self, token: str) -> str:
+        """Decrypt a token.
+
+        Raises InvalidToken on failure after applying backoff delay.
+        On success the failure counter is reset.
+        """
+        try:
+            plaintext = self._fernet.decrypt(token.encode()).decode()
+            self._failure_count = 0      # reset on success
+            return plaintext
+        except Exception as exc:          # InvalidToken, etc.
+            self._failure_count += 1
+            delay = min(self._base_delay * (2 ** (self._failure_count - 1)),
+                        self._max_delay)
+            time.sleep(delay)
+            raise
+
+    @property
+    def failure_count(self) -> int:
+        return self._failure_count
+
+    def reset_failures(self) -> None:
+        """Manually reset the failure counter."""
+        self._failure_count = 0

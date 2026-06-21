@@ -1,0 +1,190 @@
+=== Message [human] ===
+[SYSTEM INFO] History compacted. Summary of progress so far:
+
+Errors Encountered:
+- read_file: [FILE] router.py (lines 1-135 of 135)
+import re
+from typing import Any, Callable, Dict, List, Option
+- read_file: [FILE] test_router.py (lines 1-156 of 156)
+'''Tests for the HTTP request router.'''
+import pytest
+fr
+- run_command: Error: Command timed out after 30ms: python -m pytest -x -q
+Partial Output:
+
+[TIMEOUT]
+- run_command: Error: Command timed out after 10ms: python -c "from router import Router, HTTPException; print('OK'
+
+Commands Executed:
+- `python -m pytest -x -q` -> Error: Command timed out after 30ms: python -m pytest -x -q
+
+- `python -c "from router import Router, HTTPException; print('OK')"` -> Error: Command timed out after 10ms: python -c "from router 
+
+(Original detailed intermediate logs archived to VFS path: /conversation_history/history_1781367549_ca2b.txt)
+
+(Original intermediate history messages cleared to save tokens and optimize cache)
+
+=== Message [ai] ===
+```tool
+{"tool": "read_file", "args": {"file_path": "test_router.py"}}
+```
+
+=== Message [human] ===
+[read_file]:
+[FILE] test_router.py (lines 1-156 of 156)
+'''Tests for the HTTP request router.'''
+import pytest
+from router import Router, HTTPException
+
+
+def handler_home(params):
+    return {"message": "Home", "params": params}
+
+
+def handler_users(params):
+    return {"message": "Users list", "params": params}
+
+
+def handler_user(params):
+    return {"message": "User detail", "params": params}
+
+
+def handler_create(params):
+    return {"message": "Create user", "params": params}
+
+
+def handler_edit(params):
+    return {"message": "Edit user", "params": params}
+
+
+def handler_delete(params):
+    return {"message": "Delete user", "params": params}
+
+
+def handler_items(params):
+    return {"message": "Items list", "params": params}
+
+
+def handler_item(params):
+    return {"message": "Item detail", "params": params}
+
+
+@pytest.fixture
+def router():
+    r = Router()
+    r.add_route("GET", "/", handler_home)
+    r.add_route("GET", "/users", handler_users)
+    r.add_route("GET", "/users/{id}", handler_user)
+    r.add_route("POST", "/users", handler_create)
+    r.add_route("PUT", "/users/{id}", handler_edit)
+    r.add_route("DELETE", "/users/{id}", handler_delete)
+    r.add_route("GET", "/items", handler_items)
+    r.add_route("GET", "/items/{item_id}", handler_item)
+    return r
+
+
+class TestRouter:
+    def test_static_route_match(self, router):
+        handler, params = router.dispatch("GET", "/")
+        assert handler == handler_home
+        assert params == {}
+
+    def test_static_route_users(self, router):
+        handler, params = router.dispatch("GET", "/users")
+        assert handler == handler_users
+        assert params == {}
+
+    def test_path_param_single(self, router):
+        handler, params = router.dispatch("GET", "/users/42")
+        assert handler == handler_user
+        assert params == {"id": "42"}
+
+    def test_path_param_string(self, router):
+        handler, params = router.dispatch("GET", "/users/john")
+        assert handler == handler_user
+        assert params == {"id": "john"}
+
+    def test_path_param_items(self, router):
+        handler, params = router.dispatch("GET", "/items/abc-123")
+        assert handler == handler_item
+        assert params == {"item_id": "abc-123"}
+
+    def test_method_post(self, router):
+        handler, params = router.dispatch("POST", "/users")
+        assert handler == handler_create
+        assert params == {}
+
+    def test_method_put(self, router):
+        handler, params = router.dispatch("PUT", "/users/1")
+        assert handler == handler_edit
+        assert params == {"id": "1"}
+
+    def test_method_delete(self, router):
+        handler, params = router.dispatch("DELETE", "/users/99")
+        assert handler == handler_delete
+        assert params == {"id": "99"}
+
+    def test_404_unknown_route(self, router):
+        with pytest.raises(HTTPException) as excinfo:
+            router.dispatch("GET", "/unknown")
+        assert excinfo.value.status_code == 404
+
+    def test_405_method_not_allowed(self, router):
+        with pytest.raises(HTTPException) as excinfo:
+            router.dispatch("POST", "/")
+        assert excinfo.value.status_code == 405
+
+    def test_405_get_on_post_only(self, router):
+        # /users exists only for POST (and GET) but "/" only for GET -> 405 for POST /
+        with pytest.raises(HTTPException) as excinfo:
+            router.dispatch("DELETE", "/users/1")
+        # /users/{id} exists for DELETE, GET, PUT => POST is not allowed on that path?
+        # Actually we registered DELETE /users/{id}, so it should match.
+        # Let's test a route that exists but with wrong method.
+        pass
+
+    def test_405_wrong_method_on_existing_path(self, router):
+        # /items exists for GET only, try POST
+        with pytest.raises(HTTPException) as excinfo:
+            router.dispatch("POST", "/items/123")
+        assert excinfo.value.status_code == 405
+
+    def test_callable_interface(self, router):
+        handler, params = router("GET", "/users/7")
+        assert handler == handler_user
+        assert params == {"id": "7"}
+
+    def test_trailing_slash_normalization(self, router):
+        handler, params = router.dispatch("GET", "/users/42/")
+        assert handler == handler_user
+        assert params == {"id": "42"}
+
+    def test_route_without_leading_slash(self, router):
+        handler, params = router.dispatch("GET", "users/42")
+        assert handler == handler_user
+        assert params == {"id": "42"}
+
+    def test_multiple_params_not_supported_by_design(self, router):
+        # Our router supports single param per segment but not multiple params in one pattern
+        # This test verifies that a route with multiple params can be added
+        def handler_multi(params):
+            return params
+        router2 = Router()
+        router2.add_route("GET", "/{a}/{b}", handler_multi)
+        handler, params = router2.dispatch("GET", "/foo/bar")
+        assert params == {"a": "foo", "b": "bar"}
+
+    def test_static_takes_precedence(self):
+        # Register static /users/create first, then /users/{id}
+        router2 = Router()
+        router2.add_route("GET", "/users/create", handler_create)
+        router2.add_route("GET", "/users/{id}", handler_user)
+        handler, params = router2.dispatch("GET", "/users/create")
+        assert handler == handler_create
+        assert params == {}
+
+    def test_http_exception_str(self):
+        exc = HTTPException(404, "Not found")
+        assert "HTTP 404: Not found" in str(exc)
+        assert exc.status_code == 404
+        assert exc.detail == "Not found"

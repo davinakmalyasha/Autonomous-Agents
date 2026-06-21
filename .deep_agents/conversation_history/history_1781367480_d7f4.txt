@@ -1,0 +1,43 @@
+=== Message [ai] ===
+```tool
+{"tool": "read_file", "args": {"file_path": "planning.md"}}
+```
+
+=== Message [human] ===
+[read_file]:
+[FILE] planning.md (lines 1-35 of 35)
+# Implementation Plan
+
+## Goal
+I need a custom HTTP request router in `router.py`. It should match incoming request paths and HTTP methods (GET, POST, etc.) to registered handler functions. It should support static paths and simple path parameters like `/users/{id}`. Propose design choices for how to implement route matching.
+
+## Analysis
+## Plan: Custom HTTP Request Router
+
+### Goal
+Implement a lightweight HTTP request router in `router.py` that:
+- Matches incoming request paths (e.g., `/users`, `/users/42`) and HTTP methods (GET, POST, PUT, DELETE) to registered handler functions.
+- Supports **static paths** (exact matching) and **path parameters** like `/users/{id}`.
+- Provides clear error handling (404 for unknown routes, 405 for method not allowed).
+- Is testable and production‑ready (no external dependencies).
+
+### Analysis
+
+#### Requirements
+1. **Route registration** – Users should register a handler for a specific path + method.
+2. **Request dispatch** – Given a method + path, return the matching handler and any extracted parameters.
+3. **Path parameters** – Named segments in curly braces (e.g., `{id}`) that match any single path segment and extract its value.
+4. **Collision handling** – Static routes should take precedence over parameterised routes. For example:
+   - `/users/create` (static) and `/users/{id}` (
+
+## Implementation Steps (MUST execute ALL)
+- [ ] Step 1: Create the main implementation file — write a complete, working implementation that satisfies the requirements
+- [ ] Step 2: Create the test file with pytest tests that verify correctness
+- [ ] Step 3: Run `python -m pytest` to verify all tests pass
+- [ ] Step 4: Fix any test failures by reading error messages and applying corrections
+
+## CRITICAL INSTRUCTIONS
+- You MUST use the `write_file` tool to create each file. Do NOT just describe what to do — CREATE THE FILES.
+- Write ALL files in the project root directory.
+- After creating files, IMMEDIATELY run `python -m pytest -x -q` to verify.
+- If tests fail, read the error, fix the code, and re-run tests.

@@ -1,0 +1,126 @@
+=== Message [ai] ===
+```tool
+{"tool": "read_file", "args": {"file_path": "priority_queue.py"}}
+```
+
+=== Message [human] ===
+[read_file]:
+[FILE] D:\MyProject\TestProjectForAgent\priority_queue.py (lines 1-118 of 118)
+"""A priority queue with aging to prevent starvation.
+
+Uses time-monotonic timestamps and a linear scan for pop, with a plain list
+as the backing store. Push is O(1) amortized, pop is O(n) + O(n) for aging.
+This is simple and correct for moderate queue sizes (hundreds to low thousands).
+
+For larger queues, consider using a balanced BST (e.g., sortedcontainers) or
+lazy-promotion heap.
+
+Aging formula:
+  effective_priority = base_priority - age * aging_factor
+
+Lower numeric priority = higher urgency (1 > 10).
+Aging reduces the effective number over time, so old items become more urgent.
+"""
+
+import time
+
+
+class PriorityQueue:
+    """Priority queue with aging to prevent starvation."""
+
+    def __init__(self, aging_factor: float = 0.1):
+        """Initialize the queue.
+
+        Args:
+            aging_factor: How much effective priority increases per second waited.
+                          Default 0.1 means an item aged 10s gets a 1.0 priority boost.
+        """
+        self._items: list[tuple[float, int, float, object]] = []
+        self._counter = 0
+        self._aging_factor = aging_factor
+
+    def push(self, item, priority: float) -> None:
+        """Add an item with the given base priority (lower = more urgent).
+
+        Args:
+            item: The item to enqueue.
+            priority: Base urgency (lower values = higher urgency).
+        """
+        timestamp = time.monotonic()
+        # Entry: (base_priority, counter, timestamp, item)
+        self._items.append((priority, self._counter, timestamp, item))
+        self._counter += 1
+
+    def _compute_effective(self, age: float, base_priority: float) -> float:
+        """Calculate effective priority after aging."""
+        return base_priority - age * self._aging_factor
+
+    def _find_best_index(self) -> int:
+        """Find index of the item with the lowest effective priority.
+
+        For ties (same effective priority), the earliest-inserted item
+        (lowest counter) wins, ensuring FIFO fairness.
+        """
+        now = time.monotonic()
+        best_idx = 0
+        best_eff = float("inf")
+        best_counter = None
+        for i, (base_prio, counter, ts, _) in enumerate(self._items):
+            age = now - ts
+            eff = self._compute_effective(age, base_prio)
+            # Use (effective, counter) as tie-breaker for stability
+            if eff < best_eff or (eff == best_eff and counter < best_counter):
+                best_eff = eff
+                best_counter = counter
+                best_idx = i
+        return best_idx
+
+    def pop(self):
+        """Remove and return the highest-urgency item (with aging applied).
+
+        Returns:
+            The item with the best effective priority.
+
+        Raises:
+            IndexError: If the queue is empty.
+        """
+        if not self._items:
+            raise IndexError("pop from an empty priority queue")
+
+        best_idx = self._find_best_index()
+        last_idx = len(self._items) - 1
+        # Swap best with last, then pop from end
+        self._items[best_idx], self._items[last_idx] = self._items[last_idx], self._items[best_idx]
+        _, _, _, item = self._items.pop()
+        return item
+
+    def peek(self):
+        """Return the highest-urgency item without removing it.
+
+        Returns:
+            The item with the best effective priority.
+
+        Raises:
+            IndexError: If the queue is empty.
+        """
+        if not self._items:
+            raise IndexError("peek from an empty priority queue")
+        best_idx = self._find_best_index()
+        return self._items[best_idx][3]
+
+    def is_empty(self) -> bool:
+        """Return True if the queue contains no items."""
+        return len(self._items) == 0
+
+    def __len__(self) -> int:
+        """Return the number of items in the queue."""
+        return len(self._items)
+
+    def size(self) -> int:
+        """Return the number of items in the queue."""
+        return len(self._items)
+
+    def clear(self) -> None:
+        """Remove all items from the queue."""
+        self._items.clear()
+        self._counter = 0

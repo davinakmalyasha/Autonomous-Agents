@@ -1,0 +1,66 @@
+=== Message [ai] ===
+I'll create the server file, then run it, test the endpoint, and verify the port file.
+
+## Step 1: Write `web_server.py`
+
+```python
+import json
+import socket
+import sys
+from http.server import HTTPServer, BaseHTTPRequestHandler
+
+PORT_START = 8000
+PORT_FILE = "server_port.json"
+
+class HealthHandler(BaseHTTPRequestHandler):
+    def do_GET(self):
+        if self.path == "/health":
+            self.send_response(200)
+            self.send_header("Content-Type", "application/json")
+            self.end_headers()
+            self.wfile.write(b'{"status": "ok"}')
+        else:
+            self.send_response(404)
+            self.end_headers()
+
+def find_free_port(start):
+    for port in range(start, 65535):
+        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+            try:
+                s.bind(("0.0.0.0", port))
+                return port
+            except OSError:
+                continue
+    raise RuntimeError("No free port found")
+
+def main():
+    free_port = find_free_port(PORT_START)
+    with open(PORT_FILE, "w") as f:
+        json.dump({"port": free_port}, f)
+
+    server = HTTPServer(("0.0.0.0", free_port), HealthHandler)
+    print(f"Server running on port {free_port}", flush=True)
+    try:
+        server.serve_forever()
+    except KeyboardInterrupt:
+        server.shutdown()
+
+if __name__ == "__main__":
+    main()
+```
+
+## Step 2: Start server in background
+
+```bash
+python web_server.py &
+sleep 2
+```
+
+Let's run it.
+
+```tool
+{"tool": "write_file", "args": {"file_path": "web_server.py", "content": "import json\nimport socket\nimport sys\nfrom http.server import HTTPServer, BaseHTTPRequestHandler\n\nPORT_START = 8000\nPORT_FILE = \"server_port.json\"\n\nclass HealthHandler(BaseHTTPRequestHandler):\n    def do_GET(self):\n        if self.path == \"/health\":\n            self.send_response(200)\n            self.send_header(\"Content-Type\", \"application/json\")\n            self.end_headers()\n            self.wfile.write(b'{\"status\": \"ok\"}')\n        else:\n            self.send_response(404)\n            self.end_headers()\n\ndef find_free_port(start):\n    for port in range(start, 65535):\n        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:\n            try:\n                s.bind((\"0.0.0.0\", port))\n                return port\n            except OSError:\n                continue\n    raise RuntimeError(\"No free port found\")\n\ndef main():\n    free_port = find_free_port(PORT_START)\n    with open(PORT_FILE, \"w\") as f:\n        json.dump({\"port\": free_port}, f)\n\n    server = HTTPServer((\"0.0.0.0\", free_port), HealthHandler)\n    print(f\"Server running on port {free_port}\", flush=True)\n    try:\n        server.serve_forever()\n    except KeyboardInterrupt:\n        server.shutdown()\n\nif __name__ == \"__main__\":\n    main()\n"}}
+```
+
+=== Message [human] ===
+[TOOL OK] write_file — wrote file

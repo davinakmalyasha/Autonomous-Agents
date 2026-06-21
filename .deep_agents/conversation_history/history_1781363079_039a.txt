@@ -1,0 +1,176 @@
+=== Message [human] ===
+[SYSTEM INFO] History compacted. Summary of progress so far:
+
+Files Created: D:\MyProject\TestProjectForAgent\priority_queue.py, D:\MyProject\TestProjectForAgent\planning.md
+
+Key Changes Made:
+- write_file(D:\MyProject\TestProjectForAgent\priority_queue.py)
+- write_file(D:\MyProject\TestProjectForAgent\planning.md)
+
+Commands Executed:
+- `cd D:\MyProject\TestProjectForAgent && python -m pytest test_priority_queue.py -v` -> [ERR] Exit 2
+============================= test session star
+
+(Original detailed intermediate logs archived to VFS path: /conversation_history/history_1781363077_b154.txt)
+
+(Original intermediate history messages cleared to save tokens and optimize cache)
+
+=== Message [ai] ===
+```tool
+{"tool": "read_file", "args": {"file_path": "D:\\MyProject\\TestProjectForAgent\\priority_queue.py"}}
+```
+
+```tool
+{"tool": "read_file", "args": {"file_path": "D:\\MyProject\\TestProjectForAgent\\test_priority_queue.py"}}
+```
+
+```tool
+{"tool": "read_file", "args": {"file_path": "D:\\MyProject\\TestProjectForAgent\\planning.md"}}
+```
+
+```tool
+{"tool": "read_file", "args": {"file_path": "D:\\MyProject\\TestProjectForAgent\\3_SourceCode.py"}}
+```
+
+=== Message [human] ===
+[read_file]:
+[FILE] D:\MyProject\TestProjectForAgent\priority_queue.py (lines 1-87 of 87)
+import itertools
+import time
+
+
+class PriorityQueueWithAging:
+    """
+    A priority queue that prevents starvation by boosting the effective priority
+    of waiting items over time (aging).
+
+    Effective priority = base_priority + aging_factor * (current_time - enqueue_time)
+    Higher effective priority is retrieved first.
+
+    The current implementation uses a linear scan for get() (O(n)) to always
+    compute the true effective priority. This is simple, correct, and sufficient
+    for moderate queue sizes. A heap-based version with lazy updates could be
+    used for better scalability.
+
+    Parameters
+    ----------
+    aging_factor : float
+        How much effective priority increases per second of waiting.
+        Larger values cause older items to overtake newer items faster.
+    time_func : callable, optional
+        Function that returns the current time in seconds.
+        Defaults to time.time.  Can be a fake clock in tests.
+    """
+
+    def __init__(self, aging_factor=1.0, time_func=None):
+        self.aging_factor = aging_factor
+        self._time_func = time_func or time.time
+        self._items = []  # list of (item, base_priority, enqueue_time, counter)
+        self._counter = itertools.count()
+
+    # ------------------------------------------------------------------
+    # Public interface
+    # ------------------------------------------------------------------
+
+    def put(self, item, priority=0):
+        """Insert an item with the given base priority (higher = more important)."""
+        entry = (item, priority, self._time_func(), next(self._counter))
+        self._items.append(entry)
+
+    def get(self, self):
+        """
+        Remove and return the item with the highest effective priority.
+
+        Raises IndexError if the queue is empty.
+        """
+        if not self._items:
+            raise IndexError("get from empty queue")
+
+        now = self._time_func()
+        best_idx = 0
+        best_effective = self._effective(self._items[0], now)
+
+        for i in range(1, len(self._items)):
+            eff = self._effective(self._items[i], now)
+            if eff > best_effective:
+                best_effective = eff
+                best_idx = i
+
+        # Swap with last element for O(1) removal
+        last_idx = len(self._items) - 1
+        self._items[best_idx], self._items[last_idx] = (
+            self._items[last_idx],
+            self._items[best_idx],
+        )
+        item, _priority, _enqueued, _counter = self._items.pop()
+        return item
+
+    def qsize(self, self):
+        """Return the number of items currently in the queue."""
+        return len(self._items)
+
+    def empty(self, self):
+        """Return True if the queue is empty, False otherwise."""
+        return len(self._items) == 0
+
+    # ------------------------------------------------------------------
+    # Internal helpers
+    # ------------------------------------------------------------------
+
+    def _effective(self, entry, now):
+        """Compute effective priority of one entry at the given time."""
+        _item, base_priority, enqueue_time, _counter = entry
+        age = now - enqueue_time
+        return base_priority + self.aging_factor * age
+
+[read_file]:
+[FILE] D:\MyProject\TestProjectForAgent\test_priority_queue.py (lines 1-27 of 27)
+import time
+import pytest
+
+from priority_queue import PriorityQueueWithAging
+
+
+class FakeClock:
+    """Deterministic fake clock for testing aging behaviour."""
+
+    def __init__(self, start=0.0):
+        self._now = start
+
+    def advance(self, delta):
+        self._now += delta
+
+    def __call__(self):
+        return self._now
+
+
+# ------------------------------------------------------------------
+# Basic correctness
+# ------------------------------------------------------------------
+
+
+def test_put_and_get():
+    q = PriorityQueueWithAging()
+    q.put("a\)
+
+
+[read_file]:
+[FILE] D:\MyProject\TestProjectForAgent\planning.md (lines 1-13 of 13)
+# Goal
+Implement a more efficient heap-based PriorityQueueWithAging with continuous aging and comprehensive tests.
+
+## Codebase Analysis & Root Cause
+Current implementation uses O(n) linear scan for get(). By deriving a static key (base_priority - aging_factor * enqueue_time), effective priority ordering becomes constant over time, allowing a heap for O(log n) operations.
+
+## Proposed Changes
+Rewrite priority_queue.py using heapq with static key approach
+Fix buggy method signatures (duplicate self parameter)
+Write thorough tests in test_priority_queue.py
+
+## Proposed Steps
+- [ ] Execute task and verify
+
+
+[read_file]:
+[FILE] D:\MyProject\TestProjectForAgent\3_SourceCode.py (lines 1-1 of 1)
+Code successfully implemented and tests verified.

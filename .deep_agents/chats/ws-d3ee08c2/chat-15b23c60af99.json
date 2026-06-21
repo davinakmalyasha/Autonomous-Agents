@@ -1,0 +1,47 @@
+{
+  "id": "chat-15b23c60af99",
+  "title": "New Conversation",
+  "model": "Automatic Fallback",
+  "createdAt": "2026-06-16T07:14:11.614993",
+  "updatedAt": "2026-06-16T07:14:39.940076",
+  "messages": [
+    {
+      "id": "msg-577435fd",
+      "role": "user",
+      "content": "what project is this?",
+      "timestamp": "2026-06-16T07:14:17.693411",
+      "index": 0
+    },
+    {
+      "id": "msg-bb50d8fb",
+      "role": "user",
+      "content": "what project?",
+      "timestamp": "2026-06-16T07:14:39.694999",
+      "index": 1
+    }
+  ],
+  "daily_summaries": [],
+  "current_day_messages": [
+    {
+      "sender": "user",
+      "text": "what project is this?",
+      "timestamp": "2026-06-16T07:14:17.720406"
+    },
+    {
+      "sender": "jarvis",
+      "text": "This project is 'GauntletSandbox', which appears to be a CloudBrew landing page \u2014 a coffee-related product site. It includes an `index.html` (landing page), `styles.css`, `script.js`, a Flask backend (`app.py` with SQLite database for orders), and tests (`test_cloudbrew.py`). The site has a dark mod",
+      "timestamp": "2026-06-16T07:14:17.951305"
+    },
+    {
+      "sender": "user",
+      "text": "what project?",
+      "timestamp": "2026-06-16T07:14:39.716993"
+    },
+    {
+      "sender": "jarvis",
+      "text": "This project is 'GauntletSandbox', which appears to be a CloudBrew landing page \u2014 a coffee-related product site. It includes an `index.html` (landing page), `styles.css`, `script.js`, a Flask backend (`app.py` with SQLite database for orders), and tests (`test_cloudbrew.py`). The site has a dark mod",
+      "timestamp": "2026-06-16T07:14:39.843540"
+    }
+  ],
+  "last_active_date": "2026-06-16"
+}

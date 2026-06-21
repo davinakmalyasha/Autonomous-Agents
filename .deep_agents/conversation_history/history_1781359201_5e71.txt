@@ -1,0 +1,8 @@
+=== Message [ai] ===
+```tool
+{"tool": "read_file", "args": {"file_path": "D:/MyProject/TestProjectForAgent/planning.md"}}
+```
+
+=== Message [human] ===
+[read_file]:
+Error executing read_file: Path outside allowed roots: D:\planning.md

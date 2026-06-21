@@ -1,0 +1,18 @@
+diff --git a/developer_agent.py b/developer_agent.py
+index 46bf3b8..0d79bad 100644
+--- a/developer_agent.py
++++ b/developer_agent.py
+@@ -2058,11 +2058,5 @@ def developer_node(s: ITState) -> dict:
+     shared_state["outputs"]["code"] = summary
+     shared_state["outputs"]["agent_report"] = "Code implementation reached max iterations."
+ 
+-    return make_return({
+-        "code": summary,
+-        "agent_report": summary,
+-        "test_report": "",
+-        "project_path": project_path,
+-        "code_updated": True,
+-        "tech_spec_updated": False,
+-    })
++"    return make_return({\n        \"code\": summary,\n        \"agent_report\": summary,\n        \"test_report\": \"\",\n        \"project_path\": project_path,\n        \"code_updated\": True,\n        \"tech_spec_updated\": False,\n    })\n\n# ═══════════════════════════════════════════════════════════════════════════════\n# Parser & helper functions merged from dev_utils.py\n# ═══════════════════════════════════════════════════════════════════════════════\n\ndef extract_traceback_files_context(project_path: str, test_report: str) -> str:\n    \"\"\"Parses a test report traceback to find failing files, and returns their content as context.\"\"\"\n    if not test_report:\n        return \"\"\n    import re\n    injected_files_context = \"\"\n    try:\n        found_files = set(re.findall(r'\\b([\\w\\-]+\\.(?:py|js|ts|go))\\b', test_report))\n        if project_path and os.path.isdir(project_path):\n            for root, _, filenames in os.walk(project_path):\n                # Skip version control, cache and env directories\n                if any(ignore in root for ignore in [\".git\", \".deep_agents\", \".pytest_cache\", \"__pycache__\", \"venv\", \".venv\"]):\n                    continue\n                for f in filenames:\n                    is_test_file = f.startswith(\"test_\") or f.endswith(\"_test.py\") or f.endswith(\".test.js\") or f.endswith(\".spec.js\") or f.endswith(\".test.ts\") or f.endswith(\".spec.ts\") or f.endswith(\"_test.go\")\n                    if f in found_files or is_test_file:\n                        fpath = os.path.join(root, f)\n                        if os.path.isfile(fpath) and os.path.getsize(fpath) < 30000:\n                            rel_path = os.path.relpat
++<truncated 17129 bytes>

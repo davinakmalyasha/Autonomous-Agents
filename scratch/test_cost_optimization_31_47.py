@@ -96,17 +96,16 @@ class TestCostOptimization31and47(unittest.TestCase):
         # Set initial cost
         shared_state["token_usage"]["total_cost"] = 0.10
         
-        # Mock invoke to increment cost by 0.06 (above cap of 0.05)
+        # Mock invoke to increment cost by 0.20 (above legacy cap)
         def side_effect(*args, **kwargs):
-            shared_state["token_usage"]["total_cost"] += 0.06
-            return "Subagent failed output"
+            shared_state["token_usage"]["total_cost"] += 0.20
+            return "Subagent output above budget"
         mock_invoke.side_effect = side_effect
         
-        with self.assertRaises(BudgetExceededException) as ctx:
-            task(name="BA-GapAnalyzer", task="Analyze the gap")
-            
-        self.assertIn("Subagent token budget exceeded", str(ctx.exception))
-        self.assertAlmostEqual(shared_state["token_usage"]["total_cost"], 0.16)
+        # Budget check has been deleted; verify it completes without raising BudgetExceededException
+        res = task(name="BA-GapAnalyzer", task="Analyze the gap")
+        self.assertEqual(res, "Subagent output above budget")
+        self.assertAlmostEqual(shared_state["token_usage"]["total_cost"], 0.30)
 
 if __name__ == "__main__":
     unittest.main()

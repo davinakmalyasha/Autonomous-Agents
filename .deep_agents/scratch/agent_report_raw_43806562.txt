@@ -1,0 +1,154 @@
+We'll implement the Todo CLI application with persistent storage and write tests to verify all functionality.
+
+## Plan
+
+- **`todo_cli.py`**:  
+  - `TaskManager` class handling task CRUD, JSON persistence, auto-increment IDs, and priority-sorted listing.  
+  - `main()` using `argparse` with subcommands: `add`, `list`, `complete`.  
+- **`test_todo_cli.py`**:  
+  - `TestTaskManager` unit tests using temporary files.  
+  - `TestCLI` integration tests capturing stdout/stderr.  
+
+Let's write the code.# Step 1: Understand the request
+We need to build:
+- A CLI todo app with add/list/complete commands
+- Persistent storage in tasks.json
+- Priority sorting (1 highest, 3 lowest)
+- Auto-increment IDs
+- Tests
+
+# Step 2: Write todo_cli.py
+
+```python
+# todo_cli.py
+import argparse
+import json
+import os
+import sys
+
+TASKS_FILE = "tasks.json"
+
+class TaskManager:
+    def __init__(self, file_path=None):
+        self.file_path = file_path or TASKS_FILE
+        self.tasks = self.load_tasks()
+
+    def load_tasks(self):
+        if os.path.exists(self.file_path):
+            try:
+                with open(self.file_path, 'r') as f:
+                    return json.load(f)
+            except (json.JSONDecodeError, IOError):
+                print("Warning: Corrupted tasks file. Starting fresh.", file=sys.stderr)
+                return []
+        return []
+
+    def save_tasks(self):
+        with open(self.file_path, 'w') as f:
+            json.dump(self.tasks, f, indent=2)
+
+    def get_next_id(self):
+        if not self.tasks:
+            return 1
+        return max(task['id'] for task in self.tasks) + 1
+
+    def add_task(self, title, description, priority):
+        if not title.strip():
+            raise ValueError("Title cannot be empty.")
+        if priority not in (1, 2, 3):
+            raise ValueError("Priority must be 1, 2, or 3.")
+        task = {
+            'id': self.get_next_id(),
+            'title': title.strip(),
+            'description': description.strip(),
+            'priority': priority,
+            'completed': False
+        }
+        self.tasks.append(task)
+        self.save_tasks()
+        return task
+
+    def list_tasks(self):
+        # Sort by priority ascending (1 highest first)
+        sorted_tasks = sorted(self.tasks, key=lambda t: (t.get('priority', 3), t.get('id')))
+        return sorted_tasks
+
+    def complete_task(self, task_id):
+        for task in self.tasks:
+            if task['id'] == task_id:
+                if task['completed']:
+                    return False, "Task already completed."
+                task['completed'] = True
+                self.save_tasks()
+                return True, "Task marked as completed."
+        return False, f"Task with ID {task_id} not found."
+
+def main():
+    parser = argparse.ArgumentParser(description="Todo List CLI")
+    subparsers = parser.add_subparsers(dest='command', required=True)
+
+    # Add command
+    add_parser = subparsers.add_parser('add', help='Add a new task')
+    add_parser.add_argument('title', type=str, help='Task title')
+    add_parser.add_argument('description', type=str, nargs='?', default='', help='Task description')
+    add_parser.add_argument('priority', type=int, nargs='?', default=2, help='Priority (1=high, 2=medium, 3=low)')
+
+    # List command
+    list_parser = subparsers.add_parser('list', help='List all tasks sorted by priority')
+
+    # Complete command
+    complete_parser = subparsers.add_parser('complete', help='Mark a task as completed')
+    complete_parser.add_argument('task_id', type=int, help='ID of the task to complete')
+
+    args = parser.parse_args()
+    mgr = TaskManager()
+
+    if args.command == 'add':
+        try:
+            task = mgr.add_task(args.title, args.description, args.priority)
+            print(f"Added task [{task['id']}]: {task['title']} (priority {task['priority']})")
+        except ValueError as e:
+            print(f"Error: {e}", file=sys.stderr)
+            sys.exit(1)
+
+    elif args.command == 'list':
+        tasks = mgr.list_tasks()
+        if not tasks:
+            print("No tasks found.")
+            return
+        print(f"{'ID':>3} {'Priority':>8} {'Completed':>10}  Title")
+        print("-" * 40)
+        for t in tasks:
+            done = "✓" if t['completed'] else " "
+            print(f"{t['id']:>3} {t['priority']:>8} {done:>10}  {t['title']}")
+
+    elif args.command == 'complete':
+        success, message = mgr.complete_task(args.task_id)
+        print(message)
+        if not success:
+            sys.exit(1)
+
+if __name__ == '__main__':
+    main()
+```
+
+# Step 3: Write test_todo_cli.py
+
+```python
+# test_todo_cli.py
+import json
+import os
+import sys
+import tempfile
+import unittest
+from unittest.mock import patch
+from io import StringIO
+
+# Ensure the module is importable
+sys.path.insert(0, os.path.dirname(__file__))
+from todo_cli import TaskManager, TASKS_FILE
+
+class TestTaskManager(unittest.TestCase):
+    def setUp(self):
+        self.temp_dir = tempfile.TemporaryDirectory()
+        self.tasks_path = o

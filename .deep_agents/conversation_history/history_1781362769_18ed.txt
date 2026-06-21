@@ -1,0 +1,232 @@
+=== Message [human] ===
+[SYSTEM INFO] History compacted. Summary of progress so far:
+
+Files Created: test_priority_queue.py
+
+Key Changes Made:
+- write_file(test_priority_queue.py)
+
+(Original detailed intermediate logs archived to VFS path: /conversation_history/history_1781362764_69ea.txt)
+
+(Original intermediate history messages cleared to save tokens and optimize cache)
+
+=== Message [ai] ===
+```tool
+{"tool": "read_file", "args": {"file_path": "priority_queue.py"}}
+```
+
+```tool
+{"tool": "read_file", "args": {"file_path": "test_priority_queue.py"}}
+```
+
+```tool
+{"tool": "read_file", "args": {"file_path": "planning.md"}}
+```
+
+=== Message [human] ===
+[read_file]:
+[FILE] priority_queue.py (lines 1-166 of 166)
+import heapq
+import time
+from dataclasses import dataclass, field
+from typing import Any, Optional
+
+
+@dataclass(order=True)
+class PriorityItem:
+    """An item in the priority queue with aging support.
+
+    Attributes:
+        adjusted_priority: The effective priority (used for heap ordering).
+            Lower value = higher importance. This is computed as:
+            original_priority + aging_factor * (current_time - enqueue_time).
+        timestamp: The time when this item was enqueued (monotonic clock).
+        original_priority: The user-assigned priority. Lower = more important.
+        counter: A sequence counter to break ties deterministically.
+        item: The actual data payload.
+    """
+    adjusted_priority: float = field(compare=True)
+    timestamp: float = field(compare=False)
+    original_priority: float = field(compare=False)
+    counter: int = field(compare=False)
+    item: Any = field(compare=False)
+
+
+class PriorityQueue:
+    """A priority queue with aging to prevent starvation.
+
+    Items with lower priority values are dequeued first (higher importance).
+    As items wait in the queue, their effective priority decreases over time
+    (aging), preventing low-priority items from starving indefinitely.
+
+    The aging formula is:
+        adjusted_priority = original_priority - aging_factor * (current_time - enqueue_time)
+
+    Note the subtraction: aging *reduces* the priority number, making older
+    items more important (since lower = more important).
+
+    Args:
+        aging_factor: How quickly priority ages per second of wait time.
+            Higher values = faster aging. Set to 0 to disable aging.
+            Default is 1.0.
+    """
+
+    def __init__(self, aging_factor: float = 1.0):
+        if aging_factor < 0:
+            raise ValueError("aging_factor must be non-negative")
+        self._heap: list[PriorityItem] = []
+        self._counter = 0
+        self._aging_factor = aging_factor
+
+    def push(self, item: Any, priority: float) -> None:
+        """Push an item onto the queue with the given priority.
+
+        Lower priority values mean higher importance (dequeued first).
+
+        Args:
+            item: The data to store in the queue.
+            priority: The importance level (lower = more important).
+        """
+        now = time.monotonic()
+        adjusted = priority - self._aging_factor * 0  # adjusted on push = original
+        # On push, adjusted_priority equals original_priority (age=0).
+        # Aging is applied lazily during pop/peek via _reheap_with_aging.
+        heap_item = PriorityItem(
+            adjusted_priority=adjusted,
+            timestamp=now,
+            original_priority=priority,
+            counter=self._counter,
+            item=item,
+        )
+        self._counter += 1
+        heapq.heappush(self._heap, heap_item)
+
+    def _reheap_with_aging(self) -> None:
+        """Recalculate adjusted priorities for all items based on current time.
+
+        This prevents starvation by boosting the effective priority of items
+        that have been waiting the longest.
+        """
+        if self._aging_factor == 0:
+            return
+        now = time.monotonic()
+        new_heap: list[PriorityItem] = []
+        for entry in self._heap:
+            age = now - entry.timestamp
+            entry.adjusted_priority = entry.original_priority - self._aging_factor * age
+            new_heap.append(entry)
+        heapq.heapify(new_heap)
+        self._heap = new_heap
+
+    def pop(self) -> Any:
+        """Remove and return the highest-priority item (lowest priority value).
+
+        Applies aging before popping so that older items get a boost.
+
+        Returns:
+            The item with the highest effective priority.
+
+        Raises:
+            IndexError: If the queue is empty.
+        """
+        if self.is_empty():
+            raise IndexError("pop from empty priority queue")
+        self._reheap_with_aging()
+        heap_item = heapq.heappop(self._heap)
+        return heap_item.item
+
+    def peek(self) -> Any:
+        """Return the highest-priority item without removing it.
+
+        Applies aging before peeking so the view is accurate.
+
+        Returns:
+            The item with the highest effective priority.
+
+        Raises:
+            IndexError: If the queue is empty.
+        """
+        if self.is_empty():
+            raise IndexError("peek from empty priority queue")
+        self._reheap_with_aging()
+        return self._heap[0].item
+
+    def is_empty(self) -> bool:
+        """Check if the queue is empty.
+
+        Returns:
+            True if the queue has no items, False otherwise.
+        """
+        return len(self._heap) == 0
+
+    def size(self) -> int:
+        """Return the number of items in the queue.
+
+        Returns:
+            The number of items currently in the queue.
+        """
+        return len(self._heap)
+
+    def clear(self) -> None:
+        """Remove all items from the queue."""
+        self._heap.clear()
+        self._counter = 0
+
+    @property
+    def aging_factor(self) -> float:
+        """Get the current aging factor."""
+        return self._aging_factor
+
+    @aging_factor.setter
+    def aging_factor(self, value: float) -> None:
+        """Set the aging factor. Must be non-negative."""
+        if value < 0:
+            raise ValueError("aging_factor must be non-negative")
+        self._aging_factor = value
+
+    def __len__(self) -> int:
+        return self.size()
+
+    def __bool__(self) -> bool:
+        return not self.is_empty()
+
+    def __repr__(self) -> str:
+        return f"PriorityQueue(size={self.size()}, aging_factor={self._aging_factor})"
+
+[read_file]:
+[FILE] test_priority_queue.py (lines 1-13 of 13)
+""import time
+import unittest
+from priority_queue import PriorityQueue, PriorityItem
+
+
+class TestPriorityItem(unittest.TestCase):
+    def test_creation(self):
+        item = PriorityItem(
+            adjusted_priority=5.0,
+            timestamp=100.0,
+            original_priority=5.0,
+            counter=0,
+            item="test
+
+[read_file]:
+[FILE] planning.md (lines 1-19 of 19)
+# Goal
+Implement a custom priority queue in priority_queue.py with aging to prevent starvation, using an efficient data structure.
+
+## Codebase Analysis & Root Cause
+A priority queue with aging prevents low-priority items from starving by gradually boosting their effective priority over time. The heap-based approach gives O(log n) push/pop. Aging is implemented by storing a timestamp on enqueue and computing an adjusted priority on dequeue: adjusted = original_priority + aging_factor * (current_time - enqueue_time).
+
+## Proposed Changes
+Create priority_queue.py with PriorityItem and PriorityQueue classes
+Implement push, pop, peek, is_empty, and size methods
+Add aging mechanism: older items get priority boost proportional to waiting time
+Make aging_factor configurable
+Create test_priority_queue.py with comprehensive tests
+
+## Proposed Steps
+- [ ] [x] Explore codebase (empty project)
+- [ ] [x] Write planning.md
+- [ ] Create priority_queue.py with PriorityItem and PriorityQueue
+- [ ] Create test_priority_queue.py with unit tests
+- [ ] Run tests and verify correctness

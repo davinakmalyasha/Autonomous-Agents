@@ -1,0 +1,68 @@
+=== Message [ai] ===
+## Planning
+
+### Goal
+Implement an in-memory key-value store (`kv_store.py`) with:
+- `get(key)` – returns value or `None` if missing/expired.
+- `set(key, value, ttl=None)` – stores value with optional TTL in seconds.
+- `delete(key)` – removes key, raises `KeyError` if missing.
+- `backup_to_file(path)` – saves state as JSON (including expiry timestamps).
+- `restore_from_file(path)` – loads state from JSON (preserving expiry).
+- TTL expiration: keys become inaccessible after TTL passes.
+- Time dependency must be mockable for testing.
+
+### Proposed Changes
+- Create `kv_store.py` with class `KVStore`.
+- Use injectable `time_func` (default `time.time`) for all time references.
+- Internal storage: `{key: (value, expiry)}` where `expiry` is `None` (no TTL) or absolute timestamp.
+- `backup_to_file` serializes: `{key: {"value": value, "expires_at": expiry}}`.
+- `restore_from_file` loads that format.
+- Create `test_kv_store.py` with pytest tests covering:
+  - Basic get/set/delete.
+  - TTL expiration (using a mock clock).
+  - Backup and restore of empty and non-empty store.
+  - Edge cases: delete missing, get expired returns `None`.
+
+### Steps
+1. Write `planning.md`.
+2. Implement `kv_store.py`.
+3. Implement `test_kv_store.py`.
+4. Run tests and fix any failures.
+
+---
+
+## Implementation
+
+Let’s proceed with code.
+
+```tool
+{"tool": "write_file", "args": {"file_path": "planning.md", "content": "# Planning for Key-Value Store\n\n## Goal\nBuild an in-memory key-value store with TTL, backup/restore, and comprehensive tests.\n\n## Design\n- **KVStore** class with `get`, `set`, `delete`, `backup_to_file`, `restore_from_file`.\n- Internal storage: `_data` dict mapping key -> (value, expiry_timestamp or None).\n- **TTL**: `set(key, value, ttl=None)` stores current_time + ttl if ttl is not None.\n- **Expiration**: `get` and `delete` check if key exists and expiry is past → act as if missing.\n- **Time injection**: constructor takes `time_func=time.time` for testability.\n- **Backup**: JSON format: `{key: {\"value\": ..., \"expires_at\": float or null}}`.\n- **Restore**: clear current state, load from JSON, reconstruct `_data`.\n\n## Tests\n- Verify get/set/delete basic behavior.\n- Verify TTL expiration using a mock `time_func`.\n- Verify backup and restore round-trip.\n- Ensure expired keys are not backed up? (optional: backup all, restore all).\n\n## Steps\n1. Write `kv_store.py`\n2. Write `test_kv_store.py`\n3. Run tests\n"}}
+```
+
+```tool
+{"tool": "write_file", "args": {"file_path": "kv_store.py", "content": "import json\nimport time\n\n\nclass KVStore:\n    \"\"\"In-memory key-value store with optional TTL and JSON backup/restore.\"\"\"\n\n    def __init__(self, time_func=time.time):\n        self._time = time_func\n        self._data = {}  # key -> (value, expires_at)\n\n    def set(self, key, value, ttl=None):\n        \"\"\"Set key to value with optional TTL in seconds.\"\"\"\n        if ttl is not None:\n            expires_at = self._time() + ttl\n        else:\n            expires_at = None\n        self._data[key] = (value, expires_at)\n\n    def get(self, key):\n        \"\"\"Return value for key, or None if missing or expired.\"\"\"\n        entry = self._data.get(key)\n        if entry is None:\n            return None\n        value, expires_at = entry\n        if expires_at is not None and self._time() >= expires_at:\n            # Expired: remove key and return None\n            del self._data[key]\n            return None\n        return value\n\n    def delete(self, key):\n        \"\"\"Delete key, raise KeyError if not found.\"\"\"\n        entry = self._data.get(key)\n        if entry is None:\n            raise KeyError(f\"Key '{key}' not found\")\n        # Also expire check? We could check expiration before delete, but typical usage expects deletion to work for expired keys?\n        # For robustness, we'll check expiration: if expired, treat as not found.\n        value, expires_at = entry\n        if expires_at is not None and self._time() >= expires_at:\n            del self._data[key]\n            raise KeyError(f\"Key '{key}' not found (expired)\")\n        del self._data[key]\n\n    def backup_to_file(self, path):\n        \"\"\"Save current state (including expiry timestamps) to a JSON file.\"\"\"\n        # Build serializable dict\n        serializable = {}\n        for key, (value, expires_at) in self._data.items():\n            # We include all keys, even expired? They should be cleaned on get/delete.\n            # But for consistency, we could optionally skip expired keys. Let's include all as stored.\n            serializable[key] = {\n                \"value\": value,\n                \"expires_at\": expires_at\n            }\n        with open(path, 'w') as f:\n            json.dump(serializable, f)\n\n    def restore_from_file(self, path):\n        \"\"\"Load state from a JSON file (replaces current data).\"\"\"\n        with open(path, 'r') as f:\n            serializable = json.load(f)\n        data = {}\n        for key, entry in serializable.items():\n            data[key] = (entry[\"value\"], entry[\"expires_at\"])\n        self._data = data\n"}}
+```
+
+```tool
+{"tool": "write_file", "args": {"file_path": "test_kv_store.py", "content": "import json\nimport pytest\nimport tempfile\nimport os\nfrom unittest.mock import Mock\nfrom kv_store import KVStore\n\n\nclass TestKVStoreBasic:\n    def test_set_and_get(self):\n        store = KVStore()\n        store.set(\"name\", \"Alice\")\n        assert store.get(\"name\") == \"Alice\"\n\n    def test_get_missing_key(self):\n        store = KVStore()\n        assert store.get(\"missing\") is None\n\n    def test_delete(self):\n        store = KVStore()\n        store.set(\"key\", \"value\")\n        store.delete(\"key\")\n        assert store.get(\"key\") is None\n\n    def test_delete_missing_raises(self):\n        store = KVStore()\n        with pytest.raises(KeyError):\n            store.delete(\"nonexistent\")\n\n    def test_overwrite(self):\n        store = KVStore()\n        store.set(\"key\", \"v1\")\n        store.set(\"key\", \"v2\")\n        assert store.get(\"key\") == \"v2\"\n\n\nclass TestKVStoreTTL:\n    def test_expiration(self):\n        \"\"\"Key should expire after TTL.\"\"\"\n        mock_time = Mock(return_value=1000.0)\n        store = KVStore(time_func=mock_time)\n        store.set(\"temp\", \"data\", ttl=10)\n        # Before expiration\n        assert store.get(\"temp\") == \"data\"\n        # Advance time past expiration\n        mock_time.return_value = 1011.0\n        assert store.get(\"temp\") is None\n\n    def test_expiration_delete(self):\n        \"\"\"Deleting an expired key should raise KeyError.\"\"\"\n        mock_time = Mock(return_value=1000.0)\n        store = KVStore(time_func=mock_time)\n        store.set(\"temp\", \"x\", ttl=1)\n        mock_time.return_value = 1002.0\n        with pytest.raises(KeyError):\n            store.delete(\"temp\")\n\n    def test_no_ttl_never_expires(self):\n        store = KVStore()\n        store.set(\"persistent\", \"forever\")\n        # Even after time passes (real time), should still work\n        # We can't control real time easily, but we can use mock with large jump\n        mock_time = Mock(return_value=0)\n        store2 = KVStore(time_func=mock_time)\n        store2.set(\"key\", \"val\")\n        mock_time.return_value = 999999\n        assert store2.get(\"key\") == \"val\"\n\n\nclass TestKVStoreBackupRestore:\n    def test_backup_restore_empty(self):\n        store = KVStore()\n        with tempfile.NamedTemporaryFile(mode='w', delete=False, suffix='.json') as f:\n            path = f.name\n        try:\n            store.backup_to_file(path)\n            new_store = KVStore()\n            new_store.restore_from_file(path)\n            # Should be empty\n            assert new_store.get(\"anything\") is None\n        finally:\n            os.unlink(path)\n\n    def test_backup_restore_with_data(self):\n        mock_time = Mock(return_value=1000.0)\n        store = KVStore(time_func=mock_time)\n        store.set(\"a\", 1)\n        store.set(\"b\", \"hello\", ttl=30)\n        store.set(\"c\", {\"nested\": True}, ttl=60)\n        with tempfile.NamedTemporaryFile(mode='w', delete=False, suffix='.json') as f:\n            path = f.name\n        try:\n            store.backup_to_file(path)\n            new_store = KVStore(time_func=Mock(return_value=1000.0))\n            new_store.restore_from_file(path)\n            assert new_store.get(\"a\") == 1\n            assert new_store.get(\"b\") == \"hello\"\n            assert new_store.get(\"c\") == {\"nested\": True}\n            # Check that TTL is preserved: advance time\n            new_store._time.return_value = 1031.0  # past b's TTL (1000+30=1030)\n            assert new_store.get(\"b\") is None\n            assert new_store.get(\"c\") == {\"nested\": True}  # not expired yet (1060)\n        finally:\n            os.unlink(path)\n\n    def test_backup_restore_clears_old_data(self):\n        store = KVStore()\n        store.set(\"old\", \"data\")\n        with tempfile.NamedTemporaryFile(mode='w', delete=False, suffix='.json') as f:\n            path = f.name\n        try:\n            # Create a backup with different data\n            store2 = KVStore()\n            store2.set(\"new\", \"stuff\")\n            store2.backup_to_file(path)\n            store.restore_from_file(path)\n            assert store.get(\"old\") is None\n            assert store.get(\"new\") == \"stuff\"\n        finally:\n            os.unlink(path)\n"}}
+```
+
+```tool
+{"tool": "run_command", "args": {"command": "python -m pytest test_kv_store.py -v", "timeout": 30}}
+```
+
+=== Message [human] ===
+[write_file]:
+[OK] Wrote planning.md (25 lines, 1015 chars)
+
+[write_file]:
+[OK] Wrote kv_store.py (67 lines, 2512 chars)
+
+[write_file]:
+[OK] Wrote test_kv_store.py (121 lines, 4107 chars)
+
+[run_command]:
+Error: Command timed out after 30ms: python -m pytest test_kv_store.py -v
+Partial Output:
+
+[TIMEOUT]

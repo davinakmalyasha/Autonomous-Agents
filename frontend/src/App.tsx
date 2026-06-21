@@ -1,0 +1,334 @@
+import { useState, useCallback, useEffect, useRef } from 'react';
+import TitleBar from './components/Layout/TitleBar';
+import Sidebar from './components/Layout/Sidebar';
+import ChatView from './components/Workspace/ChatView';
+import SettingsModal from './components/Layout/SettingsModal';
+import TokenStatsModal from './components/Layout/TokenStatsModal';
+import { usePipeline } from './hooks/usePipeline';
+import { fetchModels, addChatMessage, createChat, fetchChat, fetchWorkspaces, fetchChats } from './services/api';
+import type { ChatMessage, WorkspaceInfo, ChatData, ModelOption, AppState } from './types';
+import { parseLogToSteps } from './utils/logParser';
+
+const WELCOME_MESSAGES: ChatMessage[] = [
+  {
+    id: 'welcome-1',
+    role: 'system',
+    content: 'Connected to Antigravity v3 — Supervisor + Developer agent online. Add a workspace folder to get started.',
+    timestamp: new Date().toISOString(),
+  },
+];
+
+export default function App() {
+  const { run, cancel, state: pipeState, isRunning, error } = usePipeline();
+  const state: AppState | null = pipeState;
+
+  const [messages, setMessages] = useState<ChatMessage[]>(WELCOME_MESSAGES);
+  const [activeWorkspace, setActiveWorkspace] = useState<WorkspaceInfo | null>(null);
+  const [activeChat, setActiveChat] = useState<ChatData | null>(null);
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+  const [isTokenStatsOpen, setIsTokenStatsOpen] = useState(false);
+
+  const [model, setModel] = useState('Automatic Fallback');
+  const [temperature] = useState(0.7);
+  const [models, setModels] = useState<ModelOption[]>([]);
+  const [notification, setNotification] = useState<string | null>(null);
+
+  const wasRunning = useRef(false);
+  const runStartTime = useRef<number | null>(null);
+
+  useEffect(() => {
+    fetchModels().then((m) => { if (m.length) setModels(m); }).catch(() => {});
+    
+    // Auto-select first workspace and chat on mount
+    fetchWorkspaces().then(async (ws) => {
+      if (ws.length > 0) {
+        // Find if there is a saved workspace or just use the first one
+        const initialWs = ws[0];
+        setActiveWorkspace(initialWs);
+        try {
+          const chats = await fetchChats(initialWs.id);
+          if (chats.length > 0) {
+            const chat = await fetchChat(initialWs.id, chats[0].id);
+            setActiveChat(chat);
+            setMessages(chat.messages.length > 0 ? chat.messages : [{
+              id: `sys-${Date.now()}`,
+              role: 'system',
+              content: `Chat ready in ${initialWs.name}. What would you like to build?`,
+              timestamp: new Date().toISOString(),
+            }]);
+          }
+        } catch (err) {
+          console.error('[App] Failed to auto-load chats:', err);
+        }
+      }
+    }).catch(() => {});
+
+    // Expose direct API test for debugging — call window.testApi() in DevTools console
+    (window as any).testApi = async (prompt = 'hello') => {
+      console.log('[testApi] Sending direct request to /api/run, prompt:', prompt);
+      try {
+        const res = await fetch('/api/run', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ prompt, model: 'Automatic Fallback', temperature: 0.7 }),
+        });
+        console.log('[testApi] Response status:', res.status);
+        const reader = res.body?.getReader();
+        if (!reader) { console.error('[testApi] No reader'); return; }
+        const decoder = new TextDecoder();
+        let buffer = '';
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) { console.log('[testApi] Stream ended, buffer:', buffer); break; }
+          buffer += decoder.decode(value, { stream: true });
+          const lines = buffer.split('\n');
+          buffer = lines.pop() ?? '';
+          for (const line of lines) {
+            if (line.startsWith('data: ')) {
+              try {
+                const parsed = JSON.parse(line.slice(6));
+                console.log('[testApi] State:', parsed);
+              } catch (e) { console.log('[testApi] Parse error:', e); }
+            }
+            if (line.startsWith('event: done')) {
+              console.log('[testApi] DONE event');
+            }
+          }
+        }
+      } catch (err) {
+        console.error('[testApi] Fetch error:', err);
+      }
+    };
+    console.log('[Antigravity] testApi() registered — call window.testApi() in console to test API directly');
+  }, []);
+
+  // ── Handle pipeline completion persistence and synchronization ──
+  useEffect(() => {
+    if (isRunning) {
+      wasRunning.current = true;
+    } else if (wasRunning.current) {
+      wasRunning.current = false;
+      if (activeWorkspace && activeChat) {
+        console.log('[App] Pipeline run completed. Saving trace and final response...');
+        
+        const saveAndRefresh = async () => {
+          try {
+            const log = state?.live_terminal_log;
+            if (log) {
+              const { steps, assistantResponse } = parseLogToSteps(log);
+              const duration = runStartTime.current
+                ? Math.round((Date.now() - runStartTime.current) / 1000) + 's'
+                : undefined;
+              
+              // Save a single unified agent message with trace metadata
+              await addChatMessage(
+                activeWorkspace.id,
+                activeChat.id,
+                'agent',
+                assistantResponse || 'Task complete.',
+                { isTrace: true, steps, duration }
+              );
+            }
+            // Now re-fetch to sync messages and token stats
+            const updatedChat = await fetchChat(activeWorkspace.id, activeChat.id);
+            setActiveChat(updatedChat);
+            setMessages(updatedChat.messages);
+          } catch (err) {
+            console.error('[App] Failed to complete run persistence:', err);
+          }
+        };
+
+        saveAndRefresh();
+      }
+    }
+  }, [isRunning, activeWorkspace, activeChat, state?.live_terminal_log]);
+
+  useEffect(() => {
+    if (!error) return;
+    const errMsg: ChatMessage = { id: `error-${Date.now()}`, role: 'error', content: error, timestamp: new Date().toISOString() };
+    setMessages((prev) => [...prev, errMsg]);
+    if (activeWorkspace && activeChat) {
+      addChatMessage(activeWorkspace.id, activeChat.id, 'error', error).catch(() => {});
+    }
+  }, [error]);
+
+  // ── Handlers ──
+
+  const handleSend = useCallback(async (prompt: string) => {
+    console.log('[App.handleSend] called with prompt=%o activeWorkspace=%o activeChat=%o', prompt, activeWorkspace, activeChat);
+    setNotification(null);
+
+    // Resolve workspace — auto-select first available if none is active
+    let ws = activeWorkspace;
+
+    if (!ws) {
+      console.log('[App.handleSend] no active workspace, fetching...');
+      try {
+        const workspaces = await fetchWorkspaces();
+        console.log('[App.handleSend] workspaces fetched:', workspaces);
+        if (workspaces.length === 0) {
+          setNotification('No project folder yet. Add one from the sidebar — click the folder+ icon next to "Projects".');
+          return;
+        }
+        ws = workspaces[0];
+        setActiveWorkspace(ws);
+        console.log('[App.handleSend] auto-selected workspace:', ws);
+      } catch (err) {
+        console.error('[App.handleSend] fetchWorkspaces failed:', err);
+        setNotification('Unable to reach backend. Is the API server running on port 8000?');
+        return;
+      }
+    }
+
+    // Resolve chat — auto-select first existing or create new one
+    let chat = activeChat;
+
+    if (!chat) {
+      console.log('[App.handleSend] no active chat, resolving...');
+      try {
+        const chats = await fetchChats(ws.id);
+        console.log('[App.handleSend] chats fetched:', chats);
+        if (chats.length > 0) {
+          chat = await fetchChat(ws.id, chats[0].id);
+          setActiveChat(chat);
+          setMessages(chat.messages.length > 0 ? chat.messages : [{
+            id: `sys-${Date.now()}`,
+            role: 'system',
+            content: `Chat ready in ${ws.name}. What would you like to build?`,
+            timestamp: new Date().toISOString(),
+          }]);
+          console.log('[App.handleSend] loaded existing chat:', chat);
+        } else {
+          const newChat = await createChat(ws.id, 'New Conversation');
+          chat = await fetchChat(ws.id, newChat.id);
+          setActiveChat(chat);
+          setMessages([{
+            id: `sys-${Date.now()}`,
+            role: 'system',
+            content: `Chat ready in ${ws.name}. What would you like to build?`,
+            timestamp: new Date().toISOString(),
+          }]);
+          console.log('[App.handleSend] created new chat:', chat);
+        }
+      } catch (err) {
+        console.error('[App.handleSend] chat resolution failed:', err);
+        setNotification(`Failed to load conversation: ${err}`);
+        return;
+      }
+    }
+
+    // ── Send the message ──
+    console.log('[App.handleSend] sending message, ws=%o chat=%o', ws, chat);
+    const userMsg: ChatMessage = {
+      id: `user-${Date.now()}`,
+      role: 'user',
+      content: prompt,
+      timestamp: new Date().toISOString(),
+    };
+    setMessages((prev) => [...prev, userMsg]);
+    addChatMessage(ws.id, chat.id, 'user', prompt).catch(() => {});
+    console.log('[App.handleSend] calling run...');
+    runStartTime.current = Date.now();
+    run(prompt, model, temperature, ws.path, chat.id);
+  }, [run, model, temperature, activeWorkspace, activeChat]);
+
+  const handleSelectWorkspace = useCallback((ws: WorkspaceInfo) => {
+    setActiveWorkspace(ws);
+  }, []);
+
+  const handleSelectChat = useCallback((ws: WorkspaceInfo, chat: ChatData) => {
+    setActiveWorkspace(ws);
+    setActiveChat(chat);
+
+
+    // Load existing messages from chat
+    if (chat.messages && chat.messages.length > 0) {
+      setMessages(chat.messages);
+    } else {
+      setMessages([{
+        id: `sys-${Date.now()}`,
+        role: 'system',
+        content: `Chat ready in ${ws.name}. What would you like to build?`,
+        timestamp: new Date().toISOString(),
+      }]);
+    }
+
+    // Sync project_path to the workspace folder
+    fetch('/api/session/reset', { method: 'POST' }).catch(() => {});
+  }, []);
+
+  const displayMessages = [...messages];
+  if (isRunning && state?.live_terminal_log) {
+    const { steps, assistantResponse } = parseLogToSteps(state.live_terminal_log);
+    const elapsed = runStartTime.current
+      ? Math.round((Date.now() - runStartTime.current) / 1000) + 's'
+      : 'active';
+
+    displayMessages.push({
+      id: 'live-agent-run',
+      role: 'agent',
+      agentName: 'Assistant',
+      content: assistantResponse || '',
+      timestamp: new Date().toISOString(),
+      duration: 'active',
+      metadata: { isTrace: true, steps, duration: elapsed },
+    });
+  }
+
+  const combinedTokenUsage = {
+    total_input_tokens: (activeChat?.token_usage?.total_input_tokens || 0) + (isRunning ? (state?.token_usage?.total_input_tokens || 0) : 0),
+    total_output_tokens: (activeChat?.token_usage?.total_output_tokens || 0) + (isRunning ? (state?.token_usage?.total_output_tokens || 0) : 0),
+    total_cache_hit_tokens: (activeChat?.token_usage?.total_cache_hit_tokens || 0) + (isRunning ? (state?.token_usage?.total_cache_hit_tokens || 0) : 0),
+    total_cache_miss_tokens: (activeChat?.token_usage?.total_cache_miss_tokens || 0) + (isRunning ? (state?.token_usage?.total_cache_miss_tokens || 0) : 0),
+    total_cost: (activeChat?.token_usage?.total_cost || 0) + (isRunning ? (state?.token_usage?.total_cost || 0) : 0),
+    calls: [
+      ...(activeChat?.token_usage?.calls || []),
+      ...(isRunning ? (state?.token_usage?.calls || []) : [])
+    ]
+  };
+
+  return (
+    <div className="flex flex-col h-screen w-screen bg-zinc-950">
+      <TitleBar />
+      <div className="flex flex-1 min-h-0">
+        <Sidebar
+          activeWorkspaceId={activeWorkspace?.id ?? null}
+          activeChatId={activeChat?.id ?? null}
+          collapsed={sidebarCollapsed}
+          onSelectWorkspace={handleSelectWorkspace}
+          onSelectChat={handleSelectChat}
+          onToggleCollapse={() => setSidebarCollapsed((v) => !v)}
+          onOpenSettings={() => setIsSettingsOpen(true)}
+        />
+        <ChatView
+          messages={displayMessages}
+          isRunning={isRunning}
+          workspaceName={activeWorkspace?.name ?? null}
+          chatTitle={activeChat?.title ?? null}
+          selectedModel={model}
+          models={models}
+          state={state}
+          hasActiveChat={!!activeWorkspace && !!activeChat}
+          activeChat={activeChat}
+          notification={notification}
+          onSend={handleSend}
+          onCancel={cancel}
+          onModelChange={setModel}
+          onClearNotification={() => setNotification(null)}
+          onOpenStats={() => setIsTokenStatsOpen(true)}
+        />
+      </div>
+      <SettingsModal
+        isOpen={isSettingsOpen}
+        onClose={() => setIsSettingsOpen(false)}
+        activeWorkspace={activeWorkspace}
+      />
+      <TokenStatsModal
+        isOpen={isTokenStatsOpen}
+        onClose={() => setIsTokenStatsOpen(false)}
+        tokenUsage={combinedTokenUsage}
+      />
+    </div>
+  );
+}

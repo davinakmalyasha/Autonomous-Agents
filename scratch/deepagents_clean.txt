@@ -1,0 +1,132 @@
+Title: Live Content
+Description: Fetched live
+Source: https://docs.langchain.com/oss/python/deepagents/overview
+---
+Deep Agents overview - Docs by LangChainDocumentation IndexFetch the complete documentation index at: /llms.txtUse this file to discover all available pages before exploring further.Skip to main contentDocs by LangChain home pageBuildSearch...⌘KAsk AIGitHubTry LangSmithTry LangSmithSearch...NavigationDeep Agents overviewOverviewDeep AgentsLangChainLangGraphIntegrationsLearnReferenceContributePythonOverviewGet startedQuickstartCustomizationComparison with Claude Agent SDKChangelogDeploymentManaged Deep AgentsPREVIEWGoing to productionCore capabilitiesOverviewModelsToolsContext engineeringBackendsSubagentsAsync subagentsHuman-in-the-loopPermissionsMemorySkillsSandboxesInterpretersBetaProfilesEvent streamingBetaStreamingGrading rubricsBetaFrontendOverviewPatternsProtocolsAgent Client Protocol (ACP)MCP with LangChainA2A with LangSmithCodeOverviewMemory and skillsRemote sandboxesSubagentsModel providersConfigurationMCP toolsApp dataOn this page Create a deep agentCore capabilitiesGet startedDeep Agents overviewCopy pageBuild agents that can plan, use subagents, and leverage file systems for complex tasksCopy pageThe easiest way to start building agents and applications powered by LLMs—with built-in capabilities for task planning, file systems for context management, subagent-spawning, and long-term memory.
+You can use deep agents for any task, including complex, multi-step tasks.
+Deep Agents is an “agent harness”. It is the same core tool calling loop as other agent frameworks, but with built-in capabilities that make agents reliable for real tasks:
+Take actions in an environmentTake actions via tools, read and write files, execute codeConnect to your dataLoad memories, skills, and domain knowledge at the right momentManage growing contextSummarize history and offload large results across long runsParallelize tasksDelegate to general or specialized subagents running in isolated context windowsStay in the loopPause for human approval at critical decision pointsImprove over timeUpdate memory, skills, and prompts based on real usage
+See Harness capabilities for a full breakdown of each component.
+deepagents is a standalone library built on top of LangChain’s core building blocks for agents. It uses the LangGraph runtime for durable execution, streaming, human-in-the-loop, and other features.
+LangChain is the framework that provides the core building blocks for your agents.
+To learn more about the differences between LangChain, LangGraph, and Deep Agents, see Frameworks, runtimes, and harnesses. For a side-by-side comparison with Anthropic’s harness, see Deep Agents vs. Claude Agent SDK.
+​ Create a deep agent
+Google OpenAI Anthropic OpenRouter Fireworks Baseten Ollama# pip install -qU deepagents langchain-google-genai
+from deepagents import create_deep_agent
+def get_weather(city: str) -> str:
+"""Get weather for a given city."""
+return f"It's always sunny in {city}!"
+agent = create_deep_agent(
+model="google_genai:gemini-3.5-flash",
+tools=[get_weather],
+system_prompt="You are a helpful assistant",
+)
+# Run the agent
+agent.invoke(
+{"messages": [{"role": "user", "content": "what is the weather in sf"}]}
+)
+# pip install -qU deepagents langchain-openai
+from deepagents import create_deep_agent
+def get_weather(city: str) -> str:
+"""Get weather for a given city."""
+return f"It's always sunny in {city}!"
+agent = create_deep_agent(
+model="openai:gpt-5.4",
+tools=[get_weather],
+system_prompt="You are a helpful assistant",
+)
+# Run the agent
+agent.invoke(
+{"messages": [{"role": "user", "content": "what is the weather in sf"}]}
+)
+# pip install -qU deepagents langchain-anthropic
+from deepagents import create_deep_agent
+def get_weather(city: str) -> str:
+"""Get weather for a given city."""
+return f"It's always sunny in {city}!"
+agent = create_deep_agent(
+model="anthropic:claude-sonnet-4-6",
+tools=[get_weather],
+system_prompt="You are a helpful assistant",
+)
+# Run the agent
+agent.invoke(
+{"messages": [{"role": "user", "content": "what is the weather in sf"}]}
+)
+# pip install -qU deepagents langchain-openrouter
+from deepagents import create_deep_agent
+def get_weather(city: str) -> str:
+"""Get weather for a given city."""
+return f"It's always sunny in {city}!"
+agent = create_deep_agent(
+model="openrouter:anthropic/claude-sonnet-4-6",
+tools=[get_weather],
+system_prompt="You are a helpful assistant",
+)
+# Run the agent
+agent.invoke(
+{"messages": [{"role": "user", "content": "what is the weather in sf"}]}
+)
+# pip install -qU deepagents langchain-fireworks
+from deepagents import create_deep_agent
+def get_weather(city: str) -> str:
+"""Get weather for a given city."""
+return f"It's always sunny in {city}!"
+agent = create_deep_agent(
+model="fireworks:accounts/fireworks/models/qwen3p5-397b-a17b",
+tools=[get_weather],
+system_prompt="You are a helpful assistant",
+)
+# Run the agent
+agent.invoke(
+{"messages": [{"role": "user", "content": "what is the weather in sf"}]}
+)
+# pip install -qU deepagents langchain-baseten
+from deepagents import create_deep_agent
+def get_weather(city: str) -> str:
+"""Get weather for a given city."""
+return f"It's always sunny in {city}!"
+agent = create_deep_agent(
+model="baseten:zai-org/GLM-5",
+tools=[get_weather],
+system_prompt="You are a helpful assistant",
+)
+# Run the agent
+agent.invoke(
+{"messages": [{"role": "user", "content": "what is the weather in sf"}]}
+)
+# pip install -qU deepagents langchain-ollama
+from deepagents import create_deep_agent
+def get_weather(city: str) -> str:
+"""Get weather for a given city."""
+return f"It's always sunny in {city}!"
+agent = create_deep_agent(
+model="ollama:devstral-2",
+tools=[get_weather],
+system_prompt="You are a helpful assistant",
+)
+# Run the agent
+agent.invoke(
+{"messages": [{"role": "user", "content": "what is the weather in sf"}]}
+)
+See the Quickstart and Customization guide to get started building your own agents and applications with Deep Agents.
+Trace requests, debug agent behavior, and evaluate outputs with LangSmith. Follow the observability quickstart to get set up. When ready for production, see Going to production for LangSmith deployment options.
+​Core capabilities
+Use the Deep Agents SDK to build agents that handle complex, multi-step tasks across any model provider. The SDK ships with the following built-in capabilities:
+Planning and task decompositionA built-in write_todos tool lets agents break down complex tasks into discrete steps, track progress, and adapt plans as new information emerges.
+Context managementBuilt-in context compression offloads large tool inputs and results to the virtual filesystem and summarizes older messages to keep agents effective across extended sessions.
+Tools and MCPPass custom functions, LangChain tools, or tools from any MCP server to create_deep_agent. Deep Agents fully support the Model Context Protocol (MCP), letting you connect to databases, APIs, file systems, and more through a standard interface.
+Pluggable filesystem backendsSwap the virtual filesystem via pluggable backends: in-memory state, local disk, LangGraph store, composite routing, or a custom backend with permission rules for read and write access.
+Shell executionShell-capable backends add an execute tool for tests, builds, git operations, and system tasks. Use LocalShellBackend on the host for local development, or a sandbox backend when you need isolation from your host system.
+InterpretersAdd an interpreter to run JavaScript in an in-memory runtime. Interpreters let agents compose tools programmatically, orchestrate subagents, and transform structured data without a full shell environment.
+Subagent spawningA built-in task tool spawns general-purpose or specialized subagents for context isolation on subtasks. For long-running or parallel work, async subagents run in the background with progress checks, follow-ups, and cancellation.
+StreamingEvent streaming exposes agent runs as typed projections for messages, tool calls, values, and output. Deep Agents add stream.subagents so each delegated task gets its own handle with independent message, tool-call, and nested subagent streams.
+Long-term memoryPersist memory across threads and conversations using LangGraph’s Memory Store.
+Filesystem permissionsDeclare permission rules that control which files and directories agents can read or write. Subagents can inherit or override the parent’s rules.
+Human-in-the-loopConfigure human approval for sensitive tool operations using LangGraph’s interrupt capabilities.
+SkillsExtend agents with reusable skills that provide specialized workflows, domain knowledge, and custom instructions.
+Smart defaultsShips with opinionated system prompts that teach the model to plan before acting, verify work, and manage context. Customize or replace the defaults as needed.
+For building custom agents without these builtin capabilities, consider using LangChain’s create_agent or building a custom LangGraph workflow.
+​Get started
+QuickstartBuild your first deep agentCustomizationLearn about customization optionsTools and MCPConnect custom functions, APIs, and MCP serversModelsConfigure models and providersBackendsChoose and configure pluggable filesystem backendsSandboxesExecute code in isolated environmentsInterpretersCompose tools and transform data in QuickJSPermissionsControl filesystem access with permission rulesHuman-in-the-loopConfigure approval for sensitive operationsCodeUse Deep Agents CodeACPUse deep agents in code editors via ACPReferenceSee the deepagents API reference
+Connect these docs to Claude, VSCode, and more via MCP for real-time answers.Edit this page on GitHub or file an issue.Was this page helpful?YesNoQuickstartNext⌘IDocs by LangChain home pagegithubxlinkedinyoutubeResourcesForumChangelogLangChain AcademyContact SalesCompanyHomeTrust CenterCareersBloggithubxlinkedinyoutube

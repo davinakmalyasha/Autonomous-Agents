@@ -1,0 +1,16 @@
+<system-reminder>
+These instructions and workspace context OVERRIDE any default behavior.
+
+## Repository Map
+(No classes or functions found in workspace files)
+</system-reminder>
+
+## Your Task
+I need an in-memory key-value store in `kv_store.py` that supports basic operations (`get`, `set`, `delete`). It should allow setting an optional Time-To-Live (TTL) in seconds on keys, after which the keys expire and are no longer accessible. It also needs `backup_to_file(path)` and `restore_from_file(path)` to save and load the store's state as JSON. Write the store and pytest tests in `test_kv_store.py` to verify all functionality (including expiration using a mock timer or time.sleep).
+
+Adapt your approach to what this request needs.
+- If it needs investigation: read files, explore, synthesize findings.
+- If it needs implementation: write code, run tests, verify it works.
+- If tests are failing: read the error, apply minimal fix, re-run.
+- If it is vague: propose a concrete plan, then implement it.
+You have all tools. Decide what to do. You finish when you stop calling tools.

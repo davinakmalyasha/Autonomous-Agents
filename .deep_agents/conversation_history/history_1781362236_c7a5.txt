@@ -1,0 +1,23 @@
+=== Message [human] ===
+[SYSTEM INFO] History compacted. Summary of progress so far:
+
+Files Modified: priority_queue.py
+
+Key Changes Made:
+- edit_file(priority_queue.py)
+
+Commands Executed:
+- `cd D:\MyProject\TestProjectForAgent && python -m pytest test_priority_queue.py -v` -> [ERR] Exit 1
+============================= test session star
+
+(Original detailed intermediate logs archived to VFS path: /conversation_history/history_1781362210_3ad7.txt)
+
+(Original intermediate history messages cleared to save tokens and optimize cache)
+
+=== Message [ai] ===
+```tool
+{"tool": "edit_file", "args": {"file_path": "priority_queue.py", "diff": "<<<<<<< SEARCH\n    def _compute_effective(self, age: float, base_priority: float) -> float:\n        \"\"\"Calculate effective priority after aging.\"\"\"\n        return base_priority - age * self._aging_factor\n\n    def _find_best_index(self) -> int:\n        \"\"\"Find index of the item with the lowest effective priority.\n\n        For ties (same effective priority), the earliest-inserted item\n        (lowest counter) wins, ensuring FIFO fairness.\n        \"\"\"\n        now = time.monotonic()\n        best_idx = 0\n        best_eff = float(\"inf\")\n        best_counter = None\n        for i, (base_prio, counter, ts, _) in enumerate(self._items):\n            age = now - ts\n            eff = self._compute_effective(age, base_prio)\n            # Use (effective, counter) as tie-breaker for stability\n            if eff < best_eff or (eff == best_eff and counter < best_counter):\n                best_eff = eff\n                best_counter = counter\n                best_idx = i\n        return best_idx\n=======\n    def _find_best_index(self) -> int:\n        \"\"\"Find index of the item with the lowest effective priority.\n\n        Aging is applied relative to the newest item in the queue, so the\n        newest item(s) have no aging boost. Older items gain a boost equal to\n        `aging_factor * (now - newest_timestamp)`.\n\n        For ties (same effective priority), the earliest-inserted item\n        (lowest counter) wins, ensuring FIFO fairness.\n        \"\"\"\n        if not self._items:\n            raise IndexError(\"queue is empty\")\n        now = time.monotonic()\n        # Find the newest (largest) timestamp among all items\n        max_ts = max(ts for _, _, ts, _ in self._items)\n        best_idx = 0\n        best_eff = float(\"inf\")\n        best_counter = None\n        for i, (base_prio, counter, ts, _) in enumerate(self._items):\n            age = now - max_ts if ts != max_ts else 0.0\n            eff = base_prio - age * self._aging_factor\n            # Use (effective, counter) as tie-breaker for stability\n            if eff < best_eff or (eff == best_eff and counter < best_counter):\n                best_eff = eff\n                best_counter = counter\n                best_idx = i\n        return best_idx\n>>>>>>> REPLACE"}}
+```
+
+=== Message [human] ===
+[TOOL OK] edit_file — edited file

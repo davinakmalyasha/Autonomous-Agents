@@ -1,0 +1,7 @@
+=== Message [ai] ===
+```tool
+{"tool": "read_file", "args": {"file_path": "planning.md"}}
+```
+
+=== Message [human] ===
+[TOOL OK] read_file — read planning.md (16 lines)

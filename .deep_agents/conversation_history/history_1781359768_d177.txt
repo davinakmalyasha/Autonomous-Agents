@@ -1,0 +1,18 @@
+=== Message [human] ===
+[SYSTEM INFO] History compacted. Summary of progress so far:
+
+Errors Encountered:
+- list_files: Error executing list_files: Path outside allowed roots: D:\
+- read_file: Error executing read_file: Path outside allowed roots: D:\vault.py
+
+(Original detailed intermediate logs archived to VFS path: /conversation_history/history_1781359767_c349.txt)
+
+(Original intermediate history messages cleared to save tokens and optimize cache)
+
+=== Message [ai] ===
+```tool
+{"tool": "list_files", "args": {}}
+```
+
+=== Message [human] ===
+[TOOL OK] list_files — listed ~6 entries

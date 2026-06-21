@@ -2,6 +2,7 @@
 LLM Invocation — DeepSeek-only with model-level fallback.
 Uses the OpenAI-compatible DeepSeek API at https://api.deepseek.com.
 """
+import json
 import os
 import time
 from typing import Any, Optional, Type, TypeVar
@@ -15,7 +16,29 @@ class BudgetExceededException(Exception):
 from langchain_openai import ChatOpenAI
 from langchain_core.language_models.chat_models import BaseChatModel
 
+# Monkeypatch langchain_openai to preserve reasoning_content for DeepSeek prompt caching
+try:
+    import langchain_openai.chat_models.base as base_mod
+    orig_convert = base_mod._convert_message_to_dict
+
+    def patched_convert(message, *args, **kwargs):
+        res_dict = orig_convert(message, *args, **kwargs)
+        if hasattr(message, "additional_kwargs") and "reasoning_content" in message.additional_kwargs:
+            res_dict["reasoning_content"] = message.additional_kwargs["reasoning_content"]
+        return res_dict
+
+    base_mod._convert_message_to_dict = patched_convert
+except Exception:
+    pass
+
 from llm_config import TASK_CATEGORIES, get_task_category
+
+class StrWithMetadata(str):
+    def __new__(cls, value, reasoning=None):
+        obj = super().__new__(cls, value)
+        obj.reasoning_content = reasoning
+        return obj
+
 from llm_stats import TokenUsageTracker, update_token_stats
 from rate_limiter import token_bucket_limit
 
@@ -98,7 +121,7 @@ def _extract_native_tool_calls(res) -> list[dict]:
     return tool_calls
 
 
-def _get_deepseek_client(model: str, temp: float, role: Optional[str] = None, response_format: Optional[dict] = None, tools: Optional[list[dict]] = None) -> BaseChatModel:
+def _get_deepseek_client(model: str, temp: float, role: Optional[str] = None, response_format: Optional[dict] = None, tools: Optional[list[dict]] = None, reasoning_effort: Optional[str] = None) -> BaseChatModel:
     """Create a DeepSeek ChatOpenAI client with role-based max_tokens and optional native tools."""
     key = os.getenv("DEEPSEEK_API_KEY", "")
     if not key or key.startswith("your_"):
@@ -111,6 +134,7 @@ def _get_deepseek_client(model: str, temp: float, role: Optional[str] = None, re
         "SupervisorSummary": 1500,
         "Developer": 8000,   # enough for full file writes
         "DeveloperFixing": 8000,
+        "Orchestrator": 8000,  # max thinking needs room — reasoning + tool calls + summary
         "default": 4000,
     }
     limit = MAX_TOKENS_BY_ROLE.get(role, MAX_TOKENS_BY_ROLE["default"]) if role else None
@@ -146,49 +170,56 @@ def _get_deepseek_client(model: str, temp: float, role: Optional[str] = None, re
     # Configure native thinking mode dynamically by role/model.
     # Orchestrator (Developer/DeveloperFixing) uses pro + max thinking for deepest reasoning.
     # Subagents use flash + medium for speed.
-    is_pro = "pro" in model.lower()
-    is_flash = "flash" in model.lower()
-    is_orchestrator = (
-        role in ["Developer", "DeveloperFixing"]
-        or (role and any(x in role.lower() for x in ["developer", "orchestrator"]))
-    )
-    is_heavy = is_orchestrator or (
-        role in ["Supervisor", "sa", "Coder"]
-        or (role and any(x in role.lower() for x in ["fixing", "coder", "architect", "complex"]))
-    )
-
-    if remaining_steps is not None and remaining_steps < 5:
-        if is_heavy:
-            kwargs["extra_body"] = {"thinking": {"type": "enabled"}}
-            kwargs["reasoning_effort"] = "medium"
-        else:
+    if reasoning_effort is not None:
+        if reasoning_effort == "disabled":
             kwargs["extra_body"] = {"thinking": {"type": "disabled"}}
-    else:
-        # Orchestrator: always use maximum reasoning effort (max thinking level)
-        # Subagent heavy: pro + high thinking
-        # Standard: flash/medium or pro/medium
-        if is_orchestrator:
-            kwargs["extra_body"] = {"thinking": {"type": "enabled"}}
-            kwargs["reasoning_effort"] = "max"
-        elif is_pro and is_heavy:
-            kwargs["extra_body"] = {"thinking": {"type": "enabled"}}
-            kwargs["reasoning_effort"] = "high"
-        elif is_flash:
-            kwargs["extra_body"] = {"thinking": {"type": "enabled"}}
-            kwargs["reasoning_effort"] = "medium"
-        elif is_pro:
-            kwargs["extra_body"] = {"thinking": {"type": "enabled"}}
-            kwargs["reasoning_effort"] = "high"
         else:
-            # Fallback config
-            if role == "DeveloperFixing":
+            kwargs["extra_body"] = {"thinking": {"type": "enabled"}}
+            kwargs["reasoning_effort"] = reasoning_effort
+    else:
+        is_pro = "pro" in model.lower()
+        is_flash = "flash" in model.lower()
+        is_orchestrator = (
+            role in ["Developer", "DeveloperFixing"]
+            or (role and any(x in role.lower() for x in ["developer", "orchestrator", "designer"]))
+        )
+        is_heavy = is_orchestrator or (
+            role in ["Supervisor", "sa", "Coder"]
+            or (role and any(x in role.lower() for x in ["fixing", "coder", "architect", "complex"]))
+        )
+
+        if remaining_steps is not None and remaining_steps < 5:
+            if is_heavy:
                 kwargs["extra_body"] = {"thinking": {"type": "enabled"}}
-                kwargs["reasoning_effort"] = "max"
-            elif role == "Developer":
-                kwargs["extra_body"] = {"thinking": {"type": "enabled"}}
-                kwargs["reasoning_effort"] = "max"
+                kwargs["reasoning_effort"] = "medium"
             else:
                 kwargs["extra_body"] = {"thinking": {"type": "disabled"}}
+        else:
+            # Orchestrator: always use maximum reasoning effort (max thinking level)
+            # Subagent heavy: pro + high thinking
+            # Standard: flash/medium or pro/medium
+            if is_orchestrator:
+                kwargs["extra_body"] = {"thinking": {"type": "enabled"}}
+                kwargs["reasoning_effort"] = "max"
+            elif is_pro and is_heavy:
+                kwargs["extra_body"] = {"thinking": {"type": "enabled"}}
+                kwargs["reasoning_effort"] = "high"
+            elif is_flash:
+                kwargs["extra_body"] = {"thinking": {"type": "enabled"}}
+                kwargs["reasoning_effort"] = "medium"
+            elif is_pro:
+                kwargs["extra_body"] = {"thinking": {"type": "enabled"}}
+                kwargs["reasoning_effort"] = "high"
+            else:
+                # Fallback config
+                if role == "DeveloperFixing":
+                    kwargs["extra_body"] = {"thinking": {"type": "enabled"}}
+                    kwargs["reasoning_effort"] = "max"
+                elif role == "Developer":
+                    kwargs["extra_body"] = {"thinking": {"type": "enabled"}}
+                    kwargs["reasoning_effort"] = "max"
+                else:
+                    kwargs["extra_body"] = {"thinking": {"type": "disabled"}}
 
     return ChatOpenAI(**kwargs)
 
@@ -329,50 +360,7 @@ def invoke_with_fallback(
     where: Optional[str] = None,
 ) -> Any:
     """Invoke LLM with DeepSeek fallback chain. Supports structured output."""
-    try:
-        from state_sync import safe_get_state
-        state = safe_get_state()
-        total_cost = state.get("token_usage", {}).get("total_cost", 0.0)
-        budget_cap = float(os.environ.get("DEEP_AGENTS_BUDGET_CAP", "1.00"))
-        if total_cost >= budget_cap:
-            try:
-                from langgraph.types import interrupt
-                # Trigger native LangGraph interrupt to pause execution and prompt user
-                decision = interrupt({
-                    "type": "budget_exceeded",
-                    "message": f"HARD BUDGET LIMIT BREACHED: Cumulative cost is ${total_cost:.4f}, exceeding the ${budget_cap:.2f} cap.",
-                    "total_cost": total_cost,
-                    "budget_cap": budget_cap
-                })
-                if isinstance(decision, dict) and "new_budget_cap" in decision:
-                    new_cap = float(decision["new_budget_cap"])
-                    os.environ["DEEP_AGENTS_BUDGET_CAP"] = str(new_cap)
-                    budget_cap = new_cap
-                else:
-                    raise BudgetExceededException(
-                        f"HARD BUDGET LIMIT BREACHED: Cumulative cost is ${total_cost:.4f}, exceeding the ${budget_cap:.2f} cap."
-                    )
-            except Exception as e:
-                try:
-                    from langgraph.errors import GraphInterrupt
-                    if isinstance(e, GraphInterrupt):
-                        raise e
-                except ImportError:
-                    pass
-                if isinstance(e, BudgetExceededException):
-                    raise e
-                raise BudgetExceededException(
-                    f"HARD BUDGET LIMIT BREACHED: Cumulative cost is ${total_cost:.4f}, exceeding the ${budget_cap:.2f} cap."
-                )
-    except BudgetExceededException as e:
-        raise e
-    except Exception as e:
-        try:
-            from langgraph.errors import GraphInterrupt
-            if isinstance(e, GraphInterrupt):
-                raise e
-        except ImportError:
-            pass
+    
 
     category = get_task_category(role)
     queue = TASK_CATEGORIES[category].copy()
@@ -486,7 +474,7 @@ def invoke_with_fallback(
                     )
                     time.sleep(wait)
                     try:
-                        llm = _get_deepseek_client(model, selected_temp, role)
+                        llm = _get_deepseek_client(model, selected_temp, role, response_format=response_format)
                         tracker = TokenUsageTracker()
                         effective_sys = trim_prompt(sys_inst)
                         if schema:
@@ -584,59 +572,21 @@ def invoke_messages_with_fallback(
     where: Optional[str] = None,
     schema: Optional[Any] = None,
     tools: Optional[list[dict]] = None,
+    reasoning_effort: Optional[str] = None,
+    model: Optional[str] = None,
 ) -> Any:
     """
     Invoke LLM with multi-turn messages and optional native function calling.
     Returns (content_text, tool_calls) tuple when tools are provided,
     or just content_text string when tools=None (legacy mode).
     """
-    try:
-        from state_sync import safe_get_state
-        state = safe_get_state()
-        total_cost = state.get("token_usage", {}).get("total_cost", 0.0)
-        budget_cap = float(os.environ.get("DEEP_AGENTS_BUDGET_CAP", "1.00"))
-        if total_cost >= budget_cap:
-            try:
-                from langgraph.types import interrupt
-                # Trigger native LangGraph interrupt to pause execution and prompt user
-                decision = interrupt({
-                    "type": "budget_exceeded",
-                    "message": f"HARD BUDGET LIMIT BREACHED: Cumulative cost is ${total_cost:.4f}, exceeding the ${budget_cap:.2f} cap.",
-                    "total_cost": total_cost,
-                    "budget_cap": budget_cap
-                })
-                if isinstance(decision, dict) and "new_budget_cap" in decision:
-                    new_cap = float(decision["new_budget_cap"])
-                    os.environ["DEEP_AGENTS_BUDGET_CAP"] = str(new_cap)
-                    budget_cap = new_cap
-                else:
-                    raise BudgetExceededException(
-                        f"HARD BUDGET LIMIT BREACHED: Cumulative cost is ${total_cost:.4f}, exceeding the ${budget_cap:.2f} cap."
-                    )
-            except Exception as e:
-                try:
-                    from langgraph.errors import GraphInterrupt
-                    if isinstance(e, GraphInterrupt):
-                        raise e
-                except ImportError:
-                    pass
-                if isinstance(e, BudgetExceededException):
-                    raise e
-                raise BudgetExceededException(
-                    f"HARD BUDGET LIMIT BREACHED: Cumulative cost is ${total_cost:.4f}, exceeding the ${budget_cap:.2f} cap."
-                )
-    except BudgetExceededException as e:
-        raise e
-    except Exception as e:
-        try:
-            from langgraph.errors import GraphInterrupt
-            if isinstance(e, GraphInterrupt):
-                raise e
-        except ImportError:
-            pass
+    
 
     category = get_task_category(role)
     queue = TASK_CATEGORIES[category].copy()
+    if model:
+        normalized_model = model.replace(":", "-")
+        queue = [{"provider": "deepseek", "model": normalized_model}] + [x for x in queue if x["model"] != normalized_model]
     selected_temp = temp
 
     try:
@@ -654,7 +604,13 @@ def invoke_messages_with_fallback(
             content = trim_prompt(msg.content)
             if type(msg).__name__ == "SystemMessage":
                 content = _compact_prompt(content)
-            trimmed_messages.append(type(msg)(content=content))
+            
+            # Recreate preserving all fields like id, name, tool_calls, additional_kwargs
+            kwargs = {}
+            for field in ["id", "name", "tool_calls", "additional_kwargs", "tool_call_id"]:
+                if hasattr(msg, field):
+                    kwargs[field] = getattr(msg, field)
+            trimmed_messages.append(type(msg)(content=content, **kwargs))
         else:
             trimmed_messages.append(msg)
 
@@ -672,7 +628,11 @@ def invoke_messages_with_fallback(
         if trimmed_messages:
             last_msg = trimmed_messages[-1]
             if hasattr(last_msg, "content"):
-                trimmed_messages[-1] = type(last_msg)(content=str(last_msg.content) + guideline)
+                kwargs = {}
+                for field in ["id", "name", "tool_calls", "additional_kwargs", "tool_call_id"]:
+                    if hasattr(last_msg, field):
+                        kwargs[field] = getattr(last_msg, field)
+                trimmed_messages[-1] = type(last_msg)(content=str(last_msg.content) + guideline, **kwargs)
 
     for item in queue:
         model = item["model"]
@@ -683,7 +643,7 @@ def invoke_messages_with_fallback(
                 action = where[:120].replace('\n', ' ').strip() if where else "processing..."
                 log_terminal(f"[{role}] {action}")
             response_format = {"type": "json_object"} if schema is not None else None
-            llm = _get_deepseek_client(model, selected_temp, role, response_format=response_format, tools=tools)
+            llm = _get_deepseek_client(model, selected_temp, role, response_format=response_format, tools=tools, reasoning_effort=reasoning_effort)
             tracker = TokenUsageTracker()
             _throttle.acquire()
             try:
@@ -703,18 +663,20 @@ def invoke_messages_with_fallback(
             update_token_stats(
                 role, model, tracker.input_tokens, tracker.output_tokens, tracker.cache_hit_tokens, where
             )
-            # Return structured result: tuple with (text, tool_calls) if tools active
+            # Return structured result: tuple with (text, tool_calls, reasoning) if tools active
             if tools is not None:
                 if native_tool_calls:
-                    return (val or "", native_tool_calls)
+                    return (val or "", native_tool_calls, reasoning)
                 elif val:
-                    return (val, [])  # Text response, no tool calls — agent is done
+                    return (val, [], reasoning)  # Text response, no tool calls — agent is done
                 else:
                     log_terminal(f"[{model}] Empty response, trying next...\n")
             else:
                 if val:
                     if schema is not None:
                         val = _parse_schema_response(val, schema)
+                    else:
+                        val = StrWithMetadata(val, reasoning=reasoning)
                     return val
                 log_terminal(f"[{model}] Empty response, trying next...\n")
         except Exception as e:
@@ -733,7 +695,7 @@ def invoke_messages_with_fallback(
                     time.sleep(wait)
                     try:
                         response_format = {"type": "json_object"} if schema is not None else None
-                        llm = _get_deepseek_client(model, selected_temp, role, response_format=response_format, tools=tools)
+                        llm = _get_deepseek_client(model, selected_temp, role, response_format=response_format, tools=tools, reasoning_effort=reasoning_effort)
                         tracker = TokenUsageTracker()
                         _throttle.acquire()
                         try:
@@ -757,12 +719,14 @@ def invoke_messages_with_fallback(
                         )
                         if tools is not None:
                             if native_tool_calls:
-                                return (val or "", native_tool_calls)
+                                return (val or "", native_tool_calls, reasoning)
                             elif val:
-                                return (val, [])
+                                return (val, [], reasoning)
                         elif val:
                             if schema is not None:
                                 val = _parse_schema_response(val, schema)
+                            else:
+                                val = StrWithMetadata(val, reasoning=reasoning)
                             return val
                     except Exception as retry_e:
                         err_str = str(retry_e)

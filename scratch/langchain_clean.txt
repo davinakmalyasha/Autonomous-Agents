@@ -1,0 +1,27 @@
+Title: Live Content
+Description: Fetched live
+Source: https://docs.langchain.com/oss/python/langchain/overview
+---
+LangChain overview - Docs by LangChainDocumentation IndexFetch the complete documentation index at: /llms.txtUse this file to discover all available pages before exploring further.Skip to main contentDocs by LangChain home pageBuildSearch...⌘KAsk AIGitHubTry LangSmithTry LangSmithSearch...NavigationLangChain overviewOverviewDeep AgentsLangChainLangGraphIntegrationsLearnReferenceContributePythonOverviewGet startedInstallQuickstartChangelogPhilosophyCore componentsAgentsModelsMessagesToolsShort-term memoryEvent streamingStreamingStructured outputMiddlewareOverviewPrebuilt middlewareCustom middlewareFrontendOverviewPatternsIntegrationsAdvanced usageGuardrailsRuntimeContext engineeringModel Context Protocol (MCP)Human-in-the-loopMulti-agentRetrievalLong-term memoryAgent developmentLangSmith StudioTestAgent Chat UIDeploy with LangSmithDeploymentObservabilityOn this page Create an agent Core benefitsLangChain overviewCopy pageLangChain provides create_agent: a minimal, highly configurable agent harness. Compose exactly the agent your use case needs from model, tools, prompt, and middleware.Copy pageAgent = Model + Harness. LangChain provides create_agent: a minimal, highly configurable harness. The harness is everything around the model loop: the prompt, the tools, and any middleware that shapes behavior. Start with the primitives and compose exactly what your use case needs. Supports OpenAI, Anthropic, Google, and more.
+LangChain vs. LangGraph vs. Deep AgentsStart with Deep Agents for a “batteries-included” agent with features like automatic context compression, a virtual filesystem, and subagent-spawning. Deep Agents are built on LangChain agents which you can also use directly.Use LangChain (create_agent) for a highly customizable harness, easily tailored to your use case and data.Use LangGraph, our low-level orchestration framework, for advanced needs combining deterministic and agentic workflows.Use LangSmith to trace, debug, and evaluate agents built with any of these frameworks. Follow the tracing quickstart to get set up. We recommend you also set up LangSmith Engine which monitors your traces, detects issues, and proposes fixes.
+​ Create an agent
+This example demonstrates how to create a simple LangChain agent with a custom tool:
+OpenAIGoogle GeminiClaude (Anthropic)OpenRouterFireworksBasetenOllamaAzureAWS BedrockHuggingFace# pip install -qU langchain "langchain[openai]"
+from langchain.agents import create_agent
+def get_weather(city: str) -> str:
+"""Get weather for a given city."""
+return f"It's always sunny in {city}!"
+agent = create_agent(
+model="openai:gpt-5.4",
+tools=[get_weather],
+system_prompt="You are a helpful assistant",
+)
+result = agent.invoke(
+{"messages": [{"role": "user", "content": "What's the weather in San Francisco?"}]}
+)
+print(result["messages"][-1].content_blocks)
+See the Installation instructions and Quickstart guide to get started building your own agents and applications with LangChain.
+Use LangSmith to trace requests, debug agent behavior, and evaluate outputs. Set LANGSMITH_TRACING=true and your API key to get started.
+​ Core benefits
+Standard model interfaceDifferent providers have unique APIs for interacting with models, including the format of responses. LangChain standardizes how you interact with models so that you can seamlessly swap providers and avoid lock-in.Learn moreHighly configurable harnesscreate_agent is a minimal harness: model, tools, prompt, loop. Extend it with middleware: each piece handles one concern and composes freely. Build exactly the agent your use case needs, nothing more.Learn moreBuilt on top of LangGraphLangChain’s agents are built on top of LangGraph. This allows us to take advantage of LangGraph’s durable execution, human-in-the-loop support, persistence, and more.Learn moreDebug with LangSmithGain deep visibility into complex agent behavior with visualization tools that trace execution paths, capture state transitions, and provide detailed runtime metrics.Learn more
+Connect these docs to Claude, VSCode, and more via MCP for real-time answers.Edit this page on GitHub or file an issue.Was this page helpful?YesNoInstall LangChainNext⌘IDocs by LangChain home pagegithubxlinkedinyoutubeResourcesForumChangelogLangChain AcademyContact SalesCompanyHomeTrust CenterCareersBloggithubxlinkedinyoutube

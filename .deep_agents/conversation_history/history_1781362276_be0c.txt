@@ -1,0 +1,141 @@
+=== Message [human] ===
+[SYSTEM INFO] History compacted. Summary of progress so far:
+
+Files Modified: priority_queue.py
+
+Key Changes Made:
+- edit_file(priority_queue.py)
+
+Commands Executed:
+- `cd D:\MyProject\TestProjectForAgent && python -m pytest test_priority_queue.py -v` -> [ERR] Exit 1
+============================= test session star
+- `cd D:\MyProject\TestProjectForAgent && python -c "import time; from priority_queue import PriorityQueue; pq = PriorityQueue(aging_factor=10.0); pq.push('old_and_low', 100); pq.push('fresh_high', 1); time.sleep(10.1); print('popped:', pq.pop())"` -> [OK] Exit 0
+popped: fresh_high
+
+(Original detailed intermediate logs archived to VFS path: /conversation_history/history_1781362236_c7a5.txt)
+
+(Original intermediate history messages cleared to save tokens and optimize cache)
+
+=== Message [ai] ===
+The issue is clear: aging is computed relative to absolute time (`now - ts`), so ALL items age equally. The tests expect that only OLDER items age relative to the newest item. I've applied a fix that computes age relative to the newest item's timestamp. Let me verify.
+
+```tool
+{"tool": "run_command", "args": {"command": "cd D:\\MyProject\\TestProjectForAgent && python -m pytest test_priority_queue.py -v", "timeout": 30000}}
+```
+
+=== Message [human] ===
+[run_command]:
+[ERR] Exit 1
+============================= test session starts =============================
+platform win32 -- Python 3.10.6, pytest-9.0.3, pluggy-1.6.0 -- C:\laragon\bin\python\python-3.10\python.exe
+cachedir: .pytest_cache
+rootdir: D:\MyProject\TestProjectForAgent
+plugins: anyio-4.13.0, langsmith-0.8.11
+collecting ... collected 14 items
+
+test_priority_queue.py::TestPriorityQueue::test_push_and_pop_basic PASSED [  7%]
+test_priority_queue.py::TestPriorityQueue::test_pop_empty_raises PASSED  [ 14%]
+test_priority_queue.py::TestPriorityQueue::test_peek_empty_raises PASSED [ 21%]
+test_priority_queue.py::TestPriorityQueue::test_peek_does_not_remove PASSED [ 28%]
+test_priority_queue.py::TestPriorityQueue::test_is_empty PASSED          [ 35%]
+test_priority_queue.py::TestPriorityQueue::test_size PASSED              [ 42%]
+test_priority_queue.py::TestPriorityQueue::test_len PASSED               [ 50%]
+test_priority_queue.py::TestPriorityQueue::test_clear PASSED             [ 57%]
+test_priority_queue.py::TestPriorityQueue::test_aging_promotes_older_items FAILED [ 64%]
+test_priority_queue.py::TestPriorityQueue::test_aging_precise_simulation FAILED [ 71%]
+test_priority_queue.py::TestPriorityQueue::test_tie_same_priority_fifo PASSED [ 78%]
+test_priority_queue.py::TestPriorityQueue::test_negative_priorities PASSED [ 85%]
+test_priority_queue.py::TestPriorityQueue::test_mixed_priorities_and_aging PASSED [ 92%]
+test_priority_queue.py::TestPriorityQueue::test_starvation_prevention_demo FAILED [100%]
+
+================================== FAILURES ===================================
+______________ TestPriorityQueue.test_aging_promotes_older_items ______________
+
+self = <test_priority_queue.TestPriorityQueue object at 0x000002E2284AEA40>
+
+    def test_aging_promotes_older_items(self):
+        """An older low-priority item should become more urgent than a newer
+        high-priority item after sufficient time passes."""
+        pq = PriorityQueue(aging_factor=10.0)  # aggressive aging
+        pq.push("old_and_low", 100)   # low urgency
+        pq.push("fresh_high", 1)      # high urgency
+
+        # Wait enough for aging to overcome the priority difference
+        # Effective priority of old_and_low after 10s: 100 - 10*10 = 0
+        # Effective priority of fresh_high: 1 (no age)
+        time.sleep(10.1)
+
+        # The old item should now have better effective priority (0 < 1)
+>       assert pq.pop() == "old_and_low"
+E       AssertionError: assert 'fresh_high' == 'old_and_low'
+E
+E         - old_and_low
+E         + fresh_high
+
+test_priority_queue.py:78: AssertionError
+_______________ TestPriorityQueue.test_aging_precise_simulation _______________
+
+self = <test_priority_queue.TestPriorityQueue object at 0x000002E2284AE770>
+
+    def test_aging_precise_simulation(self):
+        """Test aging using controlled timestamps via monotonic (approximate)."""
+        pq = PriorityQueue(aging_factor=1.0)
+        pq.push("will_age", 5)   # after 6s -> eff = 5 - 6 = -1
+        # Push a slightly better item
+        pq.push("better_now", 0)  # eff = 0 with no age
+        # Wait 6 seconds
+        time.sleep(6.0)
+        # will_age should be more urgent (-1 < 0)
+>       assert pq.pop() == "will_age"
+E       AssertionError: assert 'better_now' == 'will_age'
+E
+E         - will_age
+E         + better_now
+
+test_priority_queue.py:89: AssertionError
+______________ TestPriorityQueue.test_starvation_prevention_demo ______________
+
+self = <test_priority_queue.TestPriorityQueue object at 0x000002E2284ADC30>
+
+    def test_starvation_prevention_demo(self):
+        """Demonstrate that continuously adding high-priority items doesn't
+        starve a low-priority item forever."""
+        pq = PriorityQueue(aging_factor=2.0)
+        pq.push("old_low", 100)
+
+        # Flood with many high-priority items
+        for i in range(20):
+            pq.push(f"high_{i}", 1)
+            time.sleep(0.05)
+
+        # The old low-priority item should eventually become urgent enough
+        # to be popped before all the high ones are exhausted.
+        # With aging_factor=2 and 100 base priority, after 50s it reaches 0.
+        # We won't wait that long; instead we can check that the old item
+        # eventually appears earlier than it would without aging.
+        # For this test we just ensure it's not always last.
+        items = []
+        for _ in range(pq.size()):
+            items.append(pq.pop())
+        # The old_low item should appear somewhere in the middle or early
+        # because aging boosted it.
+        assert "old_low" in items
+        # It should not be the last item popped (that would be the
+        # absolute lowest priority item with no aging boost significant enough).
+        # Since it's the oldest and has huge base priority, it should be
+        # somewhere not at the very end.
+        old_low_index = items.index("old_low")
+        total = len(items)
+        # Should be in the first half (aging boosted it enough)
+>       assert old_low_index < total * 0.6, (
+            f"old_low appeared at index {old_low_index}/{total}, aging not sufficient"
+        )
+E       AssertionError: old_low appeared at index 20/21, aging not sufficient
+E       assert 20 < (21 * 0.6)
+
+test_priority_queue.py:150: AssertionError
+=========================== short test summary info ===========================
+FAILED test_priority_queue.py::TestPriorityQueue::test_aging_promotes_older_items
+FAILED test_priority_queue.py::TestPriorityQueue::test_aging_precise_simulation
+FAILED test_priority_queue.py::TestPriorityQueue::test_starvation_prevention_demo
+======================== 3 failed, 11 passed in 17.59s ========================

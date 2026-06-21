@@ -1,0 +1,158 @@
+Here are the files I've created for the in-memory key-value store.
+
+---
+
+## `kv_store.py`
+
+```python
+import json
+import time
+
+class KVStore:
+    """In-memory key-value store with optional TTL and JSON backup/restore."""
+
+    def __init__(self, time_func=time.time):
+        self._time = time_func
+        self._data = {}  # key -> (value, expires_at)
+
+    def set(self, key, value, ttl=None):
+        """Set key to value with optional TTL in seconds."""
+        if ttl is not None:
+            expires_at = self._time() + ttl
+        else:
+            expires_at = None
+        self._data[key] = (value, expires_at)
+
+    def get(self, key):
+        """Return value for key, or None if missing or expired."""
+        entry = self._data.get(key)
+        if entry is None:
+            return None
+        value, expires_at = entry
+        if expires_at is not None and self._time() >= expires_at:
+            # Expired: remove key and return None
+            del self._data[key]
+            return None
+        return value
+
+    def delete(self, key):
+        """Delete key, raise KeyError if not found."""
+        entry = self._data.get(key)
+        if entry is None:
+            raise KeyError(f"Key '{key}' not found")
+        # Also check expiration: treat expired keys as not found
+        value, expires_at = entry
+        if expires_at is not None and self._time() >= expires_at:
+            del self._data[key]
+            raise KeyError(f"Key '{key}' not found (expired)")
+        del self._data[key]
+
+    def backup_to_file(self, path):
+        """Save current state (including expiry timestamps) to a JSON file."""
+        serializable = {}
+        for key, (value, expires_at) in self._data.items():
+            serializable[key] = {
+                "value": value,
+                "expires_at": expires_at
+            }
+        with open(path, 'w') as f:
+            json.dump(serializable, f)
+
+    def restore_from_file(self, path):
+        """Load state from a JSON file (replaces current data)."""
+        with open(path, 'r') as f:
+            serializable = json.load(f)
+        data = {}
+        for key, entry in serializable.items():
+            data[key] = (entry["value"], entry["expires_at"])
+        self._data = data
+```
+
+**Key design decisions:**
+- Accepts a `time_func` parameter for testability — tests use `unittest.mock.Mock` to control time.
+- TTL expiration is checked lazily on `get` and `delete` (expired keys are removed then).
+- `backup_to_file`/`restore_from_file` use JSON and preserve TTL expiry timestamps.
+
+---
+
+## `test_kv_store.py`
+
+```python
+import json
+import pytest
+import tempfile
+import os
+from unittest.mock import Mock
+from kv_store import KVStore
+
+class TestKVStoreBasic:
+    def test_set_and_get(self):
+        store = KVStore()
+        store.set("name", "Alice")
+        assert store.get("name") == "Alice"
+
+    def test_get_missing_key(self):
+        store = KVStore()
+        assert store.get("missing") is None
+
+    def test_delete(self):
+        store = KVStore()
+        store.set("key", "value")
+        store.delete("key")
+        assert store.get("key") is None
+
+    def test_delete_missing_raises(self):
+        store = KVStore()
+        with pytest.raises(KeyError):
+            store.delete("nonexistent")
+
+    def test_overwrite(self):
+        store = KVStore()
+        store.set("key", "v1")
+        store.set("key", "v2")
+        assert store.get("key") == "v2"
+
+class TestKVStoreTTL:
+    def test_expiration(self):
+        mock_time = Mock(return_value=1000.0)
+        store = KVStore(time_func=mock_time)
+        store.set("temp", "data", ttl=10)
+        assert store.get("temp") == "data"
+        mock_time.return_value = 1011.0
+        assert store.get("temp") is None
+
+    def test_expiration_delete(self):
+        mock_time = Mock(return_value=1000.0)
+        store = KVStore(time_func=mock_time)
+        store.set("temp", "x", ttl=1)
+        mock_time.return_value = 1002.0
+        with pytest.raises(KeyError):
+            store.delete("temp")
+
+    def test_no_ttl_never_expires(self):
+        mock_time = Mock(return_value=0)
+        store = KVStore(time_func=mock_time)
+        store.set("key", "val")
+        mock_time.return_value = 999999
+        assert store.get("key") == "val"
+
+class TestKVStoreBackupRestore:
+    def test_backup_restore_empty(self):
+        store = KVStore()
+        with tempfile.NamedTemporaryFile(mode='w', delete=False, suffix='.json') as f:
+            path = f.name
+        try:
+            store.backup_to_file(path)
+            new_store = KVStore()
+            new_store.restore_from_file(path)
+            assert new_store.get("anything") is None
+        finally:
+            os.unlink(path)
+
+    def test_backup_restore_with_data(self):
+        mock_time = Mock(return_value=1000.0)
+        store = KVStore(time_func=mock_time)
+        store.set("a", 1)
+        store.set("b", "hello", ttl=30)
+        store.set("c", {"nested": True}, ttl=60)
+        with tempfile.NamedTemporaryFile(mode='

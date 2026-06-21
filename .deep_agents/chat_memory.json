@@ -1,0 +1,46 @@
+{
+    "daily_summaries": [],
+    "current_day_messages": [
+        {
+            "sender": "user",
+            "text": "Test",
+            "timestamp": "2026-06-16T06:58:40.392900"
+        },
+        {
+            "sender": "jarvis",
+            "text": "Hello! It looks like you're just testing. No workspace is currently selected, but I'm ready to help when you need assistance with a project or technical question.",
+            "timestamp": "2026-06-16T06:58:43.353815"
+        },
+        {
+            "sender": "user",
+            "text": "Hallo",
+            "timestamp": "2026-06-16T07:02:17.843650"
+        },
+        {
+            "sender": "jarvis",
+            "text": "Hallo! Hoe kan ik je helpen?",
+            "timestamp": "2026-06-16T07:02:23.446050"
+        },
+        {
+            "sender": "user",
+            "text": "Build a folder name Davin and then make a todo list app inside",
+            "timestamp": "2026-06-16T07:05:10.067819"
+        },
+        {
+            "sender": "jarvis",
+            "text": "Initiating build: Build a folder name Davin and then make a todo list app inside",
+            "timestamp": "2026-06-16T07:05:20.970928"
+        },
+        {
+            "sender": "user",
+            "text": "Build a folder name Davin and then make a todo list app inside",
+            "timestamp": "2026-06-16T07:12:03.463498"
+        },
+        {
+            "sender": "jarvis",
+            "text": "Initiating build: Build a folder name Davin and then make a todo list app inside",
+            "timestamp": "2026-06-16T07:12:15.128544"
+        }
+    ],
+    "last_active_date": "2026-06-16"
+}

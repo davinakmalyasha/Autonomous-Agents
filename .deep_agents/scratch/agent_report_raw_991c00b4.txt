@@ -1,0 +1,92 @@
+ERROR: Stuck in an execution loop. The tool 'read_file' with arguments {"file_path": "test_vault.py"} was called 4 times and repeatedly failed or returned the same output. Last tool result: [FILE] test_vault.py (lines 1-91 of 91)
+import time
+import pytest
+from vault import PasswordVault
+
+
+class TestPasswordVaultBackoff:
+    """Verify the brute-force backoff mechanism."""
+
+    @pytest.fixture
+    def vault(self):
+        return PasswordVault()
+
+    @pytest.fixture
+    def fast_vault(self):
+        """Vault with tiny delays so backoff tests complete quickly."""
+        return PasswordVault(base_delay=0.001, max_delay=0.05)
+
+    def test_encrypt_decrypt_success(self, vault):
+        """Happy path: encrypt and decrypt a secret."""
+        secret = "my_secret_pass"
+        token = vault.encrypt(secret)
+        assert vault.decrypt(token) == secret
+        assert vault.failure_count == 0
+
+    def test_failure_resets_on_success(self, vault):
+        """Failure count resets to 0 after a successful decrypt."""
+        secret = "keep_this_safe"
+        token = vault.encrypt(secret)
+
+        # cause one failure
+        with pytest.raises(Exception):
+            vault.decrypt("bad_token")
+        assert vault.failure_count == 1
+
+        # successful decrypt resets
+        assert vault.decrypt(token) == secret
+        assert vault.failure_count == 0
+
+    def test_exponential_backoff_timing(self, fast_vault):
+        """Consecutive failures produce approximately exponential delays."""
+        delays = []
+        for _ in range(5):  # 0.001, 0.002, 0.004, 0.008, 0.016 s expected
+            start = time.perf_counter()
+            with pytest.raises(Exception):
+                fast_vault.decrypt("bad")
+            elapsed = time.perf_counter() - start
+            delays.append(round(elapsed, 4))
+
+        # don't enforce exact numbers, but check they increase
+        for i in range(1, len(delays)):
+            assert delays[i] > delays[i - 1], (
+                f"Delay did not increase: {delays}"
+            )
+
+    def test_max_backoff_cap(self, fast_vault):
+        """Delay never exceeds the configured max_delay."""
+        # force many failures to reach cap (max_delay=0.05)
+        for _ in range(10):
+            with pytest.raises(Exception):
+                fast_vault.decrypt("junk")
+
+        # one more failure should sleep ~0.05 s
+        start = time.perf_counter()
+        with pytest.raises(Exception):
+            fast_vault.decrypt("junk")
+        elapsed = time.perf_counter() - start
+        assert elapsed <= 0.1, f"Delay {elapsed} exceeded max cap"
+
+    def test_reset_after_max_backoff(self, fast_vault):
+        """After hitting max backoff, a success resets everything."""
+        secret = "reset_test"
+        token = fast_vault.encrypt(secret)
+
+        # hammer failures to reach cap
+        for _ in range(10):
+            with pytest.raises(Exception):
+                fast_vault.decrypt("nope")
+
+        assert fast_vault.failure_count > 0
+
+        # successful decrypt resets
+        assert fast_vault.decrypt(token) == secret
+        assert fast_vault.failure_count == 0
+
+        # next failure should be back to base delay (~0.001 s)
+        start = time.perf_counter()
+        with pytest.raises(Exception):
+            fast_vault.decrypt("wrong")
+        elapsed = time.perf_counter() - start
+        # should be around 0.001 s, allow tolerance
+        assert elapsed < 0.01, f"Backoff not reset, slept {elapsed:.4f}s"

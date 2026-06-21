@@ -1,0 +1,22 @@
+{
+  "workspaces": [
+    {
+      "id": "ws-061757d7",
+      "name": "LangChain",
+      "path": "d:\\MyProject\\LangChain",
+      "addedAt": "2026-06-13T14:42:25.799236"
+    },
+    {
+      "id": "ws-ae4a3bf4",
+      "name": "GauntletSandbox",
+      "path": "D:\\MyProject\\GauntletSandbox",
+      "addedAt": "2026-06-16T06:56:46.248123"
+    },
+    {
+      "id": "ws-d3ee08c2",
+      "name": "4C-Web - Copy",
+      "path": "C:\\laragon\\www\\4C-Web - Copy",
+      "addedAt": "2026-06-16T07:14:05.658814"
+    }
+  ]
+}

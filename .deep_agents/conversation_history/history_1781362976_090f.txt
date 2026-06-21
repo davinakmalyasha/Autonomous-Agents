@@ -1,0 +1,16 @@
+=== Message [human] ===
+[SYSTEM INFO] History compacted. Summary of progress so far:
+
+
+
+(Original detailed intermediate logs archived to VFS path: /conversation_history/history_1781362964_0199.txt)
+
+(Original intermediate history messages cleared to save tokens and optimize cache)
+
+=== Message [ai] ===
+```tool
+{"tool": "read_file", "args": {"file_path": "D:\\MyProject\\TestProjectForAgent\\test_priority_queue.py", "offset": 1, "limit": 100}}
+```
+
+=== Message [human] ===
+[TOOL OK] read_file — read D:\MyProject\TestProjectForAgent\test_priority_queue.py (29 lines)

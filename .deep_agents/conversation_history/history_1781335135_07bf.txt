@@ -1,0 +1,5 @@
+=== Message [human] ===
+Middle turn 1
+
+=== Message [human] ===
+compact_conversation result: [OK]...

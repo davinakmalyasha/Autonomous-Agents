@@ -9,6 +9,7 @@ import time
 import subprocess
 import glob as globmod
 import threading
+import collections
 from typing import Optional, Any
 from state_sync import shared_state
 from contextvars import ContextVar
@@ -66,19 +67,7 @@ def enforce_fs_permission(operation: str, path: str) -> None:
     if mode == "deny":
         raise PermissionError(f"Permission denied for operation '{operation}' on path '{virtual_path}'")
     elif mode == "interrupt":
-        try:
-            from langgraph.types import interrupt
-            decision = interrupt({
-                "type": "filesystem_permission",
-                "operation": operation,
-                "path": virtual_path,
-                "message": f"Human approval required: subagent requested '{operation}' access to '{virtual_path}'"
-            })
-            if isinstance(decision, dict) and decision.get("approved") is True:
-                return
-            raise PermissionError(f"Permission denied (rejected by user) for operation '{operation}' on path '{virtual_path}'")
-        except Exception:
-            raise PermissionError(f"Permission denied (human-in-the-loop approval required but not supported) for operation '{operation}' on path '{virtual_path}'")
+        raise PermissionError(f"Permission denied (human-in-the-loop approval required but not supported) for operation '{operation}' on path '{virtual_path}'")
 
 
 def _get_cache_version() -> int:
@@ -146,7 +135,7 @@ def auto_offload_result(content_str: str, tool_name: str, max_chars: int = 15000
     from deepagents.middleware._message_eviction import TOO_LARGE_TOOL_MSG, _create_content_preview
     
     file_id = uuid.uuid4().hex[:8]
-    clean_name = "".join(c if c.isalnum() or c in "-_" else "_" for c in tool_name)
+    clean_name = "".join(c if c.isalnum() or c in "-_" else "_" for c in tool_name)[:50]
     vfs_path = f"/scratch/large_tool_results/{clean_name}_{file_id}.txt"
     try:
         vfs_router = get_vfs_router()
@@ -183,6 +172,7 @@ _FILE_CACHE: dict[str, tuple[float, str]] = {}
 # TTL: 300s default. Invalidated on any file write.
 import hashlib
 _TOOL_RESPONSE_CACHE: dict[str, tuple[float, str]] = {}
+_TOOL_MTIME_MAP: dict[str, float] = {}
 _TOOL_CACHE_TTL = 300  # seconds
 
 def _make_tool_cache_key(tool_name: str, args: dict) -> str:
@@ -202,6 +192,7 @@ def _check_tool_cache(tool_name: str, args: dict) -> Optional[str]:
     ts, result = entry
     if now - ts > _TOOL_CACHE_TTL:
         del _TOOL_RESPONSE_CACHE[key]
+        _TOOL_MTIME_MAP.pop(key, None)
         return None
     # For file-based tools, also check mtime hasn't changed
     file_path = args.get("file_path") or args.get("path") or ""
@@ -210,11 +201,11 @@ def _check_tool_cache(tool_name: str, args: dict) -> Optional[str]:
         if os.path.isfile(actual_path):
             try:
                 current_mtime = os.path.getmtime(actual_path)
-                if hasattr(_check_tool_cache, "_mtime_map"):
-                    cached_mtime = _check_tool_cache._mtime_map.get(key)  # type: ignore[attr-defined]
-                    if cached_mtime is not None and cached_mtime != current_mtime:
-                        del _TOOL_RESPONSE_CACHE[key]
-                        return None
+                cached_mtime = _TOOL_MTIME_MAP.get(key)
+                if cached_mtime is not None and cached_mtime != current_mtime:
+                    del _TOOL_RESPONSE_CACHE[key]
+                    _TOOL_MTIME_MAP.pop(key, None)
+                    return None
             except Exception:
                 pass
     return result
@@ -231,17 +222,14 @@ def _set_tool_cache(tool_name: str, args: dict, result: str) -> None:
         actual_path = _sanitize_path(file_path)
         if os.path.isfile(actual_path):
             try:
-                if not hasattr(_check_tool_cache, "_mtime_map"):
-                    _check_tool_cache._mtime_map = {}  # type: ignore[attr-defined]
-                _check_tool_cache._mtime_map[key] = os.path.getmtime(actual_path)  # type: ignore[attr-defined]
+                _TOOL_MTIME_MAP[key] = os.path.getmtime(actual_path)
             except Exception:
                 pass
 
 def _invalidate_tool_cache_all() -> None:
     """Clear all tool response cache entries (called on any file write)."""
     _TOOL_RESPONSE_CACHE.clear()
-    if hasattr(_check_tool_cache, "_mtime_map"):
-        _check_tool_cache._mtime_map.clear()  # type: ignore[attr-defined]
+    _TOOL_MTIME_MAP.clear()
 
 def _invalidate_file_cache(path: str) -> None:
     """Invalidate cache entry when a file is modified."""
@@ -389,7 +377,8 @@ def _sanitize_path(path: str) -> str:
     
     # Block access to internal metadata folder (.deep_agents / .antigravity) except when reading scratch/memories/chats/history
     path_parts = real_path.replace("\\", "/").split("/")
-    if ".deep_agents" in path_parts or ".antigravity" in path_parts:
+    lower_parts = [p.lower() for p in path_parts]
+    if ".deep_agents" in lower_parts or ".antigravity" in lower_parts:
         if "scratch" not in path_parts and "memories" not in path_parts and "chats" not in path_parts and "conversation_history" not in path_parts:
             raise ValueError("Access to internal metadata folder is restricted.")
         
@@ -717,6 +706,83 @@ TOOL_DEFINITIONS = [
             "required": ["query"]
         }
     },
+    {
+        "name": "web_fetch",
+        "description": "Fetch a URL via plain HTTP GET and return text content. Fast — no browser overhead. Use for documentation, API references, blog posts, static pages. NOT for JavaScript-rendered SPAs or login-required pages.",
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "url": {
+                    "type": "string",
+                    "description": "The full URL to fetch (https://...)."
+                },
+                "max_chars": {
+                    "type": "integer",
+                    "description": "Optional. Maximum characters to return (default 15000)."
+                }
+            },
+            "required": ["url"]
+        }
+    },
+    {
+        "name": "browser_navigate",
+        "description": "Open a URL in a headless Chromium browser and return the page content as an accessibility snapshot with @ref selectors. Handles JavaScript-rendered pages, SPAs, complex web apps. Returns interactive element tree for use with other browser tools. Slower than web_fetch but handles everything.",
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "url": {
+                    "type": "string",
+                    "description": "The full URL to navigate to."
+                },
+                "wait_ms": {
+                    "type": "integer",
+                    "description": "Optional. Milliseconds to wait for page load (default 5000)."
+                }
+            },
+            "required": ["url"]
+        }
+    },
+    {
+        "name": "browser_extract",
+        "description": "Extract content from the current browser page. Use after browser_navigate. Can extract text, HTML, attribute values, page title, or URL. Uses @ref selectors from the accessibility snapshot.",
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "what": {
+                    "type": "string",
+                    "description": "What to extract: 'text' (default), 'html', 'value', 'title', 'url', 'attr name'."
+                },
+                "selector": {
+                    "type": "string",
+                    "description": "Optional CSS selector or @ref from snapshot. Empty = entire page."
+                }
+            },
+            "required": []
+        }
+    },
+    {
+        "name": "browser_screenshot",
+        "description": "Take a screenshot of the current browser page. Saves to a temp file and returns the path. Use for visual verification of pages.",
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "path": {
+                    "type": "string",
+                    "description": "Optional file path to save the screenshot. Auto-named if empty."
+                }
+            },
+            "required": []
+        }
+    },
+    {
+        "name": "browser_close",
+        "description": "Close the current browser session and free all resources (memory, Chrome process). Call when done with web research to avoid resource leaks.",
+        "parameters": {
+            "type": "object",
+            "properties": {},
+            "required": []
+        }
+    },
 ]
 
 
@@ -818,22 +884,7 @@ def _check_and_request_approval(file_path: str, action: str):
     )
     
     if is_core_config:
-        try:
-            from langgraph.types import interrupt
-            approval = interrupt({
-                "type": "approval",
-                "action": action,
-                "file_path": file_path,
-                "message": f"Human-in-the-loop: Requesting approval to {action} core configuration file {file_path}."
-            })
-            if isinstance(approval, dict):
-                approved = approval.get("approved", False)
-            else:
-                approved = bool(approval)
-            if not approved:
-                raise PermissionError(f"User rejected modification to core configuration file: {file_path}")
-        except (ImportError, RuntimeError):
-            pass
+        raise PermissionError(f"Modification to core configuration file '{file_path}' is blocked without human approval.")
 
 def write_file(file_path: str, content: str) -> str:
     """Write content to a file, creating parent directories if needed."""
@@ -1216,6 +1267,7 @@ BLOCKED_PATTERNS = {
 }
 
 BACKGROUND_PROCESSES = {}
+_BACKGROUND_PROCS_LOCK = threading.Lock()
 
 class LocalShellBackend:
     def __init__(self, root_dir: str):
@@ -1267,7 +1319,10 @@ class LocalShellBackend:
         if use_docker:
             abs_root = os.path.abspath(self.root_dir)
             image = os.environ.get("DEEP_AGENTS_DOCKER_IMAGE", "python:3.10-slim")
-            escaped_command = command.replace('"', '\\"')
+            escaped_command = command.replace('\\', '\\\\')
+            escaped_command = escaped_command.replace('`', '\\`')
+            escaped_command = escaped_command.replace('$', '\\$')
+            escaped_command = escaped_command.replace('"', '\\"')
             command = f'docker run --rm -v "{abs_root}:/workspace" -w /workspace {image} sh -c "{escaped_command}"'
 
         if background:
@@ -1287,14 +1342,12 @@ class LocalShellBackend:
                 info = {
                     "proc": proc,
                     "command": command,
-                    "logs": [],
+                    "logs": collections.deque(maxlen=2000),
                 }
-                
+
                 def _log_reader():
                     for line in proc.stdout:
                         info["logs"].append(line)
-                        if len(info["logs"]) > 2000:
-                            info["logs"].pop(0)
                         try:
                             from state_sync import shared_state
                             if "live_terminal_log" in shared_state:
@@ -1307,14 +1360,16 @@ class LocalShellBackend:
                 t = threading.Thread(target=_log_reader, daemon=True)
                 t.start()
                 info["thread"] = t
-                BACKGROUND_PROCESSES[name] = info
+                with _BACKGROUND_PROCS_LOCK:
+                    BACKGROUND_PROCESSES[name] = info
                 
                 time.sleep(1.5)
                 if proc.poll() is not None:
                     exit_code = proc.poll()
                     initial_logs = _clean_terminal_output("".join(info["logs"]))
                     output = f"[ERROR] Background process '{name}' failed to start immediately (Exit code {exit_code}).\nLogs:\n{initial_logs}"
-                    del BACKGROUND_PROCESSES[name]
+                    with _BACKGROUND_PROCS_LOCK:
+                        BACKGROUND_PROCESSES.pop(name, None)
                     _log_tool("run_command_bg_fail", {"command": command, "name": name}, output)
                     return output
                 
@@ -1439,25 +1494,25 @@ def run_command(command: str = "", timeout: int = 30000, background: bool = Fals
     # Handle process actions
     if process_action:
         if process_action == "list":
-            # Filter out dead processes
-            active = {}
-            for name, info in BACKGROUND_PROCESSES.items():
-                if info["proc"].poll() is None:
-                    active[name] = info
-            BACKGROUND_PROCESSES = active
-            
-            if not BACKGROUND_PROCESSES:
-                return "No running background processes."
-            lines = ["Active background processes:"]
-            for name, info in BACKGROUND_PROCESSES.items():
-                lines.append(f"- {name}: '{info['command']}' (PID {info['proc'].pid})")
-            return "\n".join(lines)
+            with _BACKGROUND_PROCS_LOCK:
+                # Filter out dead processes safely in-place without re-assigning dict
+                dead_keys = [k for k, info in BACKGROUND_PROCESSES.items() if info["proc"].poll() is not None]
+                for k in dead_keys:
+                    BACKGROUND_PROCESSES.pop(k, None)
+                
+                if not BACKGROUND_PROCESSES:
+                    return "No running background processes."
+                lines = ["Active background processes:"]
+                for name, info in BACKGROUND_PROCESSES.items():
+                    lines.append(f"- {name}: '{info['command']}' (PID {info['proc'].pid})")
+                return "\n".join(lines)
             
         elif process_action == "kill":
             name = command.strip()
-            if not name or name not in BACKGROUND_PROCESSES:
-                return f"Error: No background process named '{name}' is currently running."
-            info = BACKGROUND_PROCESSES[name]
+            with _BACKGROUND_PROCS_LOCK:
+                if not name or name not in BACKGROUND_PROCESSES:
+                    return f"Error: No background process named '{name}' is currently running."
+                info = BACKGROUND_PROCESSES[name]
             proc = info["proc"]
             try:
                 proc.terminate()
@@ -1470,16 +1525,17 @@ def run_command(command: str = "", timeout: int = 30000, background: bool = Fals
                     output = f"[WARNING] Process '{name}' (PID {proc.pid}) killed with force."
                 except Exception as e:
                     output = f"Error terminating process: {e}"
-            if name in BACKGROUND_PROCESSES:
-                del BACKGROUND_PROCESSES[name]
+            with _BACKGROUND_PROCS_LOCK:
+                BACKGROUND_PROCESSES.pop(name, None)
             return output
             
         elif process_action == "logs":
             name = command.strip()
-            if not name or name not in BACKGROUND_PROCESSES:
-                return f"Error: No background process named '{name}'."
-            info = BACKGROUND_PROCESSES[name]
-            logs = "".join(info["logs"])
+            with _BACKGROUND_PROCS_LOCK:
+                if not name or name not in BACKGROUND_PROCESSES:
+                    return f"Error: No background process named '{name}'."
+                info = BACKGROUND_PROCESSES[name]
+                logs = "".join(info["logs"])
             if not logs:
                 return f"Process '{name}' (PID {info['proc'].pid}) has produced no output yet."
             cleaned_logs = _clean_terminal_output(logs)
@@ -1496,11 +1552,12 @@ def run_command(command: str = "", timeout: int = 30000, background: bool = Fals
     name = None
     if background:
         clean_name = re.sub(r'[^a-zA-Z0-9_-]', '_', command.split()[0])
-        name = clean_name
-        suffix = 1
-        while name in BACKGROUND_PROCESSES:
-            name = f"{clean_name}_{suffix}"
-            suffix += 1
+        with _BACKGROUND_PROCS_LOCK:
+            name = clean_name
+            suffix = 1
+            while name in BACKGROUND_PROCESSES:
+                name = f"{clean_name}_{suffix}"
+                suffix += 1
 
     backend = LocalShellBackend(root_dir=active_ws)
     return backend.execute(command, timeout=timeout, background=background, name=name)
@@ -1517,9 +1574,13 @@ def search_code(pattern: str, path: str = "", glob: str = "") -> str:
     results = []
     try:
         compiled = re.compile(pattern)
+        ignored_dirs = {
+            "node_modules", "venv", ".venv", "venv312", ".git", "__pycache__",
+            ".claude", ".antigravity", ".deep_agents", "scratch", "vendor",
+            "dist", "build", ".next", ".vscode", ".idea", ".pytest_cache", ".mypy_cache"
+        }
         for root, dirs, files in os.walk(search_dir):
-            # Skip venv, node_modules, .git, __pycache__, .antigravity, .deep_agents
-            dirs[:] = [d for d in dirs if d not in ("venv", "node_modules", ".git", "__pycache__", ".claude", ".antigravity", ".deep_agents")]
+            dirs[:] = [d for d in dirs if d not in ignored_dirs]
             for fname in files:
                 if glob and not globmod.fnmatch.fnmatch(fname, glob):
                     continue
@@ -1575,7 +1636,11 @@ def list_files(path: str = "", pattern: str = "", recursive: bool = False) -> st
         except Exception:
             pass
 
-    ignored_dirs = {"node_modules", "venv", ".venv", ".git", "__pycache__", ".claude", ".antigravity", ".deep_agents", "vendor", "dist", "build", ".next", ".vscode", ".idea"}
+    ignored_dirs = {
+        "node_modules", "venv", ".venv", "venv312", ".git", "__pycache__",
+        ".claude", ".antigravity", ".deep_agents", "scratch", "vendor",
+        "dist", "build", ".next", ".vscode", ".idea", ".pytest_cache", ".mypy_cache"
+    }
     results = []
     if pattern:
         full_pattern = os.path.join(search_dir, pattern)
@@ -1639,57 +1704,77 @@ def list_files(path: str = "", pattern: str = "", recursive: bool = False) -> st
 
 
 def view_signatures(file_path: str) -> str:
-    """Extract class/function/method signatures and docstrings from a Python file using AST. (#14)"""
+    """Extract class/function/method signatures and docstrings from Python, PHP, TS, JS, or Dart files."""
     path = _sanitize_path(file_path)
     if not os.path.isfile(path):
         return f"Error: File not found: {file_path}"
-    if not file_path.endswith(".py"):
-        return f"Error: view_signatures only supports Python (.py) files."
-    try:
-        with open(path, "r", encoding="utf-8", errors="replace") as f:
-            content = f.read()
-        import ast
-        tree = ast.parse(content)
         
-        class PythonSignatureVisitor(ast.NodeVisitor):
-            def __init__(self):
-                self.indent = 0
-                self.output = []
+    _, ext = os.path.splitext(file_path)
+    ext = ext.lower()
+    supported_exts = {".py", ".php", ".ts", ".tsx", ".js", ".jsx", ".dart"}
+    if ext not in supported_exts:
+        return f"Error: view_signatures only supports: {', '.join(sorted(supported_exts))} files."
+        
+    if ext == ".py":
+        try:
+            with open(path, "r", encoding="utf-8", errors="replace") as f:
+                content = f.read()
+            import ast
+            tree = ast.parse(content)
             
-            def visit_ClassDef(self, node):
-                doc = ast.get_docstring(node)
-                doc_str = f'  # {doc.splitlines()[0]}' if doc and doc.splitlines() else ""
-                self.output.append("    " * self.indent + f"class {node.name}:{doc_str}")
-                self.indent += 1
-                self.generic_visit(node)
-                self.indent -= 1
+            class PythonSignatureVisitor(ast.NodeVisitor):
+                def __init__(self):
+                    self.indent = 0
+                    self.output = []
                 
-            def visit_FunctionDef(self, node):
-                self._visit_func(node)
-                
-            def visit_AsyncFunctionDef(self, node):
-                self._visit_func(node, is_async=True)
-                
-            def _visit_func(self, node, is_async=False):
-                args_list = []
-                for arg in node.args.args:
-                    args_list.append(arg.arg)
-                if node.args.vararg:
-                    args_list.append(f"*{node.args.vararg.arg}")
-                if node.args.kwarg:
-                    args_list.append(f"**{node.args.kwarg.arg}")
-                prefix = "async def " if is_async else "def "
-                doc = ast.get_docstring(node)
-                doc_str = f'  # {doc.splitlines()[0]}' if doc and doc.splitlines() else ""
-                self.output.append("    " * self.indent + f"{prefix}{node.name}({', '.join(args_list)}):{doc_str}")
-        
-        visitor = PythonSignatureVisitor()
-        visitor.visit(tree)
-        if not visitor.output:
-            return f"[SIGNATURES] {file_path} contains no class or function definitions."
-        return f"[SIGNATURES] {file_path}:\n" + "\n".join(visitor.output)
-    except Exception as e:
-        return f"Error extracting signatures from {file_path}: {e}"
+                def visit_ClassDef(self, node):
+                    doc = ast.get_docstring(node)
+                    doc_str = f'  # {doc.splitlines()[0]}' if doc and doc.splitlines() else ""
+                    self.output.append("    " * self.indent + f"class {node.name}:{doc_str}")
+                    self.indent += 1
+                    self.generic_visit(node)
+                    self.indent -= 1
+                    
+                def visit_FunctionDef(self, node):
+                    self._visit_func(node)
+                    
+                def visit_AsyncFunctionDef(self, node):
+                    self._visit_func(node, is_async=True)
+                    
+                def _visit_func(self, node, is_async=False):
+                    args_list = []
+                    for arg in node.args.args:
+                        args_list.append(arg.arg)
+                    if node.args.vararg:
+                        args_list.append(f"*{node.args.vararg.arg}")
+                    if node.args.kwarg:
+                        args_list.append(f"**{node.args.kwarg.arg}")
+                    prefix = "async def " if is_async else "def "
+                    doc = ast.get_docstring(node)
+                    doc_str = f'  # {doc.splitlines()[0]}' if doc and doc.splitlines() else ""
+                    self.output.append("    " * self.indent + f"{prefix}{node.name}({', '.join(args_list)}):{doc_str}")
+            
+            visitor = PythonSignatureVisitor()
+            visitor.visit(tree)
+            if not visitor.output:
+                return f"[SIGNATURES] {file_path} contains no class or function definitions."
+            return f"[SIGNATURES] {file_path}:\n" + "\n".join(visitor.output)
+        except Exception as e:
+            return f"Error extracting signatures from {file_path}: {e}"
+    else:
+        try:
+            from repo_map_generator import get_file_signatures
+            signatures = get_file_signatures(path, ext, is_hot=True)
+            if not signatures:
+                return f"[SIGNATURES] {file_path} contains no class or function definitions."
+            
+            lines = []
+            for sig, depth in signatures:
+                indent = "    " * depth
+                lines.append(f"{indent}{sig}")
+            return f"[SIGNATURES] {file_path}:\n" + "\n".join(lines)
+        except Exception as e:
+            return f"Error extracting signatures from {file_path}: {e}"
 
 
 def write_planning_file(file_path: str, goal: str, analysis: str, proposed_changes: str, steps: Any) -> str:
@@ -2089,7 +2174,34 @@ def read_conversation_history(file_path: str) -> str:
     return read_file(file_path)
 
 
-_SUBAGENTS_REGISTRY = {}
+class SubagentsRegistry(dict):
+    def __contains__(self, key):
+        if super().__contains__(key):
+            return True
+        if isinstance(key, str) and "-" in key:
+            prefix = key.split("-")[0]
+            if prefix in self:
+                return True
+        return False
+
+    def __getitem__(self, key):
+        if super().__contains__(key):
+            return super().__getitem__(key)
+        if isinstance(key, str) and "-" in key:
+            prefix = key.split("-")[0]
+            if prefix in self:
+                val = dict(super().__getitem__(prefix))
+                val["name"] = key
+                return val
+        raise KeyError(key)
+
+    def get(self, key, default=None):
+        try:
+            return self[key]
+        except KeyError:
+            return default
+
+_SUBAGENTS_REGISTRY = SubagentsRegistry()
 
 # ── Async Task Registry ──
 import threading
@@ -2109,33 +2221,106 @@ _DELEGATION_TOOLS = ["task", "start_async_task", "check_async_task", "list_async
 def _load_subagents():
     global _SUBAGENTS_REGISTRY
     try:
-        from ba_subagents import SUBAGENTS as ba_subs
-        for s in ba_subs:
+        from ba_agent import _BA_SYSTEM_TEMPLATE
+        from sa_agent import _SA_SYSTEM_TEMPLATE
+        from devops_agent import _DEVOPS_SYSTEM_TEMPLATE
+        from refinement_agent import _REFINEMENT_SYSTEM_TEMPLATE
+        from analytics_agent import _ANALYTICS_SYSTEM_TEMPLATE
+        from critic_agent import _CRITIC_SYSTEM_TEMPLATE
+        from designer_agent import _DESIGNER_SYSTEM_TEMPLATE
+        from developer_agent import _STATIC_SYSTEM_TEMPLATE as _DEV_SYSTEM_TEMPLATE
+
+        subs = [
+            {
+                "name": "Dev",
+                "description": "Developer — write code, fix bugs, run tests, scaffold projects, implement features",
+                "system_prompt": _DEV_SYSTEM_TEMPLATE,
+                "tools": [
+                    "read_file", "write_file", "edit_file", "run_command",
+                    "search_code", "list_files", "view_signatures",
+                    "web_fetch", "browser_navigate", "browser_extract",
+                    "browser_screenshot", "browser_close",
+                ],
+                "model": "deepseek:v4-pro",
+            },
+            {
+                "name": "BA",
+                "description": "Business Analyst — gap analysis, BRD writing, Gherkin scenarios, Mermaid flow diagrams",
+                "system_prompt": _BA_SYSTEM_TEMPLATE,
+                "tools": ["read_file", "write_file", "search_code", "list_files"],
+                "model": "deepseek:v4-flash",
+            },
+            {
+                "name": "SA",
+                "description": "System Architect — DB schemas, API design, layering, resilience, design systems, sequence flows",
+                "system_prompt": _SA_SYSTEM_TEMPLATE,
+                "tools": ["read_file", "write_file", "search_code", "list_files", "view_signatures"],
+                "model": "deepseek:v4-flash",
+            },
+            {
+                "name": "DevOps",
+                "description": "DevOps — git branches, PRs, Docker, GitHub Actions CI/CD, deployment configs, issue tracking",
+                "system_prompt": _DEVOPS_SYSTEM_TEMPLATE,
+                "tools": ["run_command", "write_file", "read_file", "list_files"],
+                "model": "deepseek:v4-flash",
+            },
+            {
+                "name": "Refinement",
+                "description": "Refinement — vulnerability scanning, dependency auditing, OWASP compliance, code security review",
+                "system_prompt": _REFINEMENT_SYSTEM_TEMPLATE,
+                "tools": ["read_file", "search_code", "run_command", "list_files"],
+                "model": "deepseek:v4-flash",
+            },
+            {
+                "name": "Analytics",
+                "description": "Analytics — deliverables audit, compliance check, KPI calculation, SDLC report compilation",
+                "system_prompt": _ANALYTICS_SYSTEM_TEMPLATE,
+                "tools": ["read_file", "search_code", "list_files", "write_file"],
+                "model": "deepseek:v4-flash",
+            },
+            {
+                "name": "Critic",
+                "description": "Code Critic — structured error diagnosis using deepseek-v4-pro + max thinking. Diagnoses test failures, tracebacks, and code issues",
+                "system_prompt": _CRITIC_SYSTEM_TEMPLATE,
+                "tools": ["read_file", "search_code", "list_files"],
+                "model": "deepseek:v4-pro",
+            },
+            {
+                "name": "Designer",
+                "description": "UI/UX Designer — design systems, wireframes, components, 3D, animations, visual design",
+                "system_prompt": _DESIGNER_SYSTEM_TEMPLATE,
+                "tools": [
+                    "read_file", "write_file", "edit_file", "list_files", "search_code",
+                    "view_signatures", "run_command",
+                    "web_fetch", "browser_navigate", "browser_extract",
+                    "browser_screenshot", "browser_close",
+                ],
+                "model": "deepseek:v4-pro",
+            },
+        ]
+        for s in subs:
             s["tools"] = list(set(s.get("tools", []) + _DELEGATION_TOOLS))
             _SUBAGENTS_REGISTRY[s["name"]] = s
-    except Exception:
-        pass
-    try:
-        from sa_subagents import SUBAGENTS as sa_subs
-        for s in sa_subs:
-            s["tools"] = list(set(s.get("tools", []) + _DELEGATION_TOOLS))
-            _SUBAGENTS_REGISTRY[s["name"]] = s
-    except Exception:
-        pass
-    try:
-        from devops_subagents import SUBAGENTS as devops_subs
-        for s in devops_subs:
-            s["tools"] = list(set(s.get("tools", []) + _DELEGATION_TOOLS))
-            _SUBAGENTS_REGISTRY[s["name"]] = s
-    except Exception:
-        pass
-    try:
-        from analytics_subagents import SUBAGENTS as analytics_subs
-        for s in analytics_subs:
-            s["tools"] = list(set(s.get("tools", []) + _DELEGATION_TOOLS))
-            _SUBAGENTS_REGISTRY[s["name"]] = s
-    except Exception:
-        pass
+
+        # Register explicit aliases for backward compatibility and tests
+        aliases = {
+            "Security": "Refinement",
+            "BA-GapAnalyzer": "BA",
+            "BA-Gherkin": "BA",
+            "SA-Database": "SA",
+            "SA-API": "SA",
+            "DevOps-Pipeline-Docker": "DevOps",
+            "DevOps-Issues": "DevOps",
+            "Analytics-Auditor": "Analytics",
+            "Analytics-Compliance": "Analytics",
+        }
+        for alias, base_name in aliases.items():
+            if base_name in _SUBAGENTS_REGISTRY:
+                alias_spec = dict(_SUBAGENTS_REGISTRY[base_name])
+                alias_spec["name"] = alias
+                _SUBAGENTS_REGISTRY[alias] = alias_spec
+    except Exception as e:
+        print(f"Error loading modularized subagents: {e}")
 
     # General-purpose subagent — has ALL tools including delegation
     _SUBAGENTS_REGISTRY["general-purpose"] = {
@@ -2157,9 +2342,13 @@ def task(name: str, task: str) -> str:
     The parent agent never sees the subagent's intermediate work — only the result.
 
     Args:
-        name: Subagent type (e.g. BA-GapAnalyzer, SA-Database, DevOps-Pipeline-Docker).
+        name: Subagent type (e.g. BA, SA, DevOps, Security, Analytics, Dev).
         task: Detailed instruction describing what the subagent should accomplish.
     """
+    depth = _TASK_DEPTH.get()
+    if depth >= _MAX_TASK_DEPTH:
+        return f"Error: Maximum task depth ({_MAX_TASK_DEPTH}) reached. Cannot spawn subagent '{name}' at depth {depth}."
+
     if not _SUBAGENTS_REGISTRY:
         _load_subagents()
 
@@ -2188,6 +2377,11 @@ def task(name: str, task: str) -> str:
             "list_files": "list_files(path?, pattern?, recursive?) — List directory contents.",
             "view_signatures": "view_signatures(file_path) — Extract function/class signatures.",
             "search_codebase": "search_codebase(query, top_k?) — Semantic code search.",
+            "web_fetch": "web_fetch(url, max_chars?) — Fetch URL via HTTP GET (fast, no browser).",
+            "browser_navigate": "browser_navigate(url, wait_ms?) — Open URL in headless Chromium, returns snapshot with @ref selectors.",
+            "browser_extract": "browser_extract(what?, selector?) — Extract text/html/value from current browser page.",
+            "browser_screenshot": "browser_screenshot(path?) — Screenshot of current browser page.",
+            "browser_close": "browser_close() — Close browser session and free resources.",
         }
         tool_lines = [_COMPACT_DEFS.get(t, f"{t}() — Execute {t}") for t in tool_names if t in _COMPACT_DEFS]
         subagent_tools_str = "## Available Tools\n" + "\n".join(f"- {line}" for line in tool_lines)
@@ -2220,16 +2414,46 @@ def task(name: str, task: str) -> str:
         elif isinstance(p, FilesystemPermission):
             perms.append(p)
 
+    depth_token = _TASK_DEPTH.set(depth + 1)
     token = active_permissions.set(perms)
     try:
         chat_id = shared_state.get("chat_id", "default_chat")
+        if name == "Dev":
+            from developer_agent import developer_node
+            from state_sync import safe_update_state
+            
+            project_path = shared_state.get("project_path", r"d:\MyProject\LangChain")
+            
+            dev_state = {
+                "client_request": task,
+                "tech_spec": shared_state.get("outputs", {}).get("tech_spec", ""),
+                "requirements": shared_state.get("outputs", {}).get("requirements", ""),
+                "project_path": project_path,
+                "chat_id": chat_id,
+                "error_count": 0,
+                "test_report": "",
+            }
+            
+            res_dict = developer_node(dev_state)
+            
+            # Sync outputs back to shared_state
+            if "code" in res_dict and res_dict["code"]:
+                safe_update_state({
+                    "outputs": {
+                        **shared_state.get("outputs", {}),
+                        "code": res_dict["code"],
+                        "test_report": res_dict.get("test_report", ""),
+                    }
+                })
+            
+            return res_dict.get("agent_report") or res_dict.get("code") or "Developer completed execution."
+
         messages = load_subagent_history(chat_id, name)
         if not messages:
             messages.append(SystemMessage(content=full_sys_prompt))
         messages.append(HumanMessage(content=task))
 
-        from llm import invoke_messages_with_fallback, BudgetExceededException
-        start_cost = shared_state.get("token_usage", {}).get("total_cost", 0.0)
+        from llm import invoke_messages_with_fallback
 
         # ── Subagent loop: LLM → tools → observe → repeat ──
         max_sub_iters = 15
@@ -2242,22 +2466,28 @@ def task(name: str, task: str) -> str:
                     messages=list(messages),
                     schema=schema,
                     temp=0.2,
+                    model=subagent_model,
                 )
 
                 # Extract response text
+                additional_kwargs = {}
+                reasoning = getattr(res, "reasoning_content", None)
+                if reasoning:
+                    additional_kwargs["reasoning_content"] = reasoning
+
                 if schema and hasattr(res, "model_dump_json"):
                     content = res.model_dump_json()
-                    messages.append(AIMessage(content=content))
+                    messages.append(AIMessage(content=content, additional_kwargs=additional_kwargs))
                     break  # Structured output → done
                 elif schema and hasattr(res, "json"):
                     content = res.json()
-                    messages.append(AIMessage(content=content))
+                    messages.append(AIMessage(content=content, additional_kwargs=additional_kwargs))
                     break
                 else:
                     content = str(res)
 
                 # Parse tool calls from response
-                from dev_utils import _parse_tool_call
+                from developer_agent import _parse_tool_call
                 tool_calls = []
                 # Multi-tool parsing: find all ```tool``` blocks in the response
                 import re as _re2
@@ -2273,11 +2503,11 @@ def task(name: str, task: str) -> str:
 
                 if not tool_calls:
                     # No tools → subagent is done
-                    messages.append(AIMessage(content=content))
+                    messages.append(AIMessage(content=content, additional_kwargs=additional_kwargs))
                     break
 
                 # Record the AI response
-                messages.append(AIMessage(content=content))
+                messages.append(AIMessage(content=content, additional_kwargs=additional_kwargs))
 
                 # Execute tools and collect results
                 tool_results = []
@@ -2289,9 +2519,7 @@ def task(name: str, task: str) -> str:
                         continue
                     try:
                         result = execute_tool(tool_name, args)
-                        # Compact successful results
-                        if len(str(result)) > 200:
-                            result = str(result)[:200] + "..."
+                        result = auto_offload_result(str(result), tool_name, max_chars=12000)
                         tool_results.append(f"[{tool_name}] {result}")
                     except Exception as e:
                         tool_results.append(f"[{tool_name}] ERROR: {str(e)[:200]}")
@@ -2300,13 +2528,7 @@ def task(name: str, task: str) -> str:
                 feedback = "\n".join(tool_results) if tool_results else "No tool results."
                 messages.append(HumanMessage(content=f"Tool results:\n{feedback}"))
 
-            # ── Budget check ──
-            end_cost = shared_state.get("token_usage", {}).get("total_cost", 0.0)
-            cost_spent = end_cost - start_cost
-            if cost_spent > 0.05:
-                raise BudgetExceededException(
-                    f"Subagent token budget exceeded: spent ${cost_spent:.4f} > cap $0.05"
-                )
+            # No budget checks here; subagents are managed by LoopGuard and structural loops.
 
         except Exception as e:
             save_subagent_history(chat_id, name, messages)
@@ -2318,6 +2540,7 @@ def task(name: str, task: str) -> str:
 
     finally:
         active_permissions.reset(token)
+        _TASK_DEPTH.reset(depth_token)
 
     # VFS offload for very large outputs
     if len(content) > 80000:
@@ -2343,6 +2566,7 @@ def task(name: str, task: str) -> str:
 def _run_subagent_in_thread(task_id: str, name: str, task_desc: str, depth: int) -> None:
     """Run a subagent in a background thread. Sets result/error on _ASYNC_TASKS."""
     try:
+        _TASK_DEPTH.set(depth)
         result = task(name, task_desc)
         with _ASYNC_LOCK:
             if task_id in _ASYNC_TASKS:
@@ -2362,7 +2586,7 @@ def start_async_task(name: str, task: str) -> str:
     For immediate results, use the regular task() tool instead.
 
     Args:
-        name: Subagent type (e.g. 'DevOps-Pipeline-Docker', 'BA-GapAnalyzer')
+        name: Subagent type (e.g. 'DevOps', 'BA')
         task: Detailed task description for the subagent
     """
     import uuid
@@ -2393,19 +2617,58 @@ def start_async_task(name: str, task: str) -> str:
     return f"Task started: {task_id}\nSubagent: {name}\nStatus: RUNNING"
 
 
-def check_async_task(task_id: str) -> str:
+def check_async_task(task_id: str, wait_seconds: int = 0) -> str:
     """Check the status of an async task. Returns result if completed.
 
     Args:
         task_id: The task ID returned by start_async_task()
+        wait_seconds: If task is still running, wait up to this many seconds
+                      before returning the status. Lets long tasks finish naturally
+                      without polling. Max 300 seconds (5 minutes).
     """
+    import time as time_mod
+    wait_seconds = max(0, min(wait_seconds, 300))  # clamp 0-300
     with _ASYNC_LOCK:
         if task_id not in _ASYNC_TASKS:
             return f"Error: Unknown task '{task_id}'. Use list_async_tasks() to see active tasks."
         t = _ASYNC_TASKS[task_id]
         if t["status"] == "running":
-            elapsed = __import__('time').time() - t.get("started_at", 0)
-            return f"STATUS: RUNNING (elapsed: {elapsed:.0f}s)\nTask: {t['name']}: {t['task'][:150]}"
+            # If wait_seconds is set, sleep in small intervals and check again
+            if wait_seconds > 0:
+                _ASYNC_LOCK.release()
+                try:
+                    check_interval = 2  # check every 2 seconds
+                    waited = 0
+                    while waited < wait_seconds:
+                        time_mod.sleep(min(check_interval, wait_seconds - waited))
+                        waited += min(check_interval, wait_seconds - waited)
+                        with _ASYNC_LOCK:
+                            if task_id not in _ASYNC_TASKS:
+                                return f"Error: Task '{task_id}' no longer exists."
+                            t2 = _ASYNC_TASKS[task_id]
+                            if t2["status"] != "running":
+                                if t2["status"] == "completed":
+                                    result = t2.get("result", "")
+                                    return f"STATUS: DONE\n{result}"
+                                else:
+                                    return f"STATUS: FAILED\n{t2.get('error', 'Unknown error')}"
+                finally:
+                    _ASYNC_LOCK.acquire()
+                # After waiting, re-read current state
+                t = _ASYNC_TASKS.get(task_id)
+                if t is None:
+                    return f"Error: Task '{task_id}' no longer exists."
+                if t["status"] == "running":
+                    elapsed = time_mod.time() - t.get("started_at", 0)
+                    return f"STATUS: RUNNING (waited {wait_seconds}s, elapsed: {elapsed:.0f}s)\nTask: {t['name']}: {t['task'][:150]}"
+                elif t["status"] == "completed":
+                    result = t.get("result", "")
+                    return f"STATUS: DONE\n{result}"
+                else:
+                    return f"STATUS: FAILED\n{t.get('error', 'Unknown error')}"
+            else:
+                elapsed = time_mod.time() - t.get("started_at", 0)
+                return f"STATUS: RUNNING (elapsed: {elapsed:.0f}s)\nTask: {t['name']}: {t['task'][:150]}"
         elif t["status"] == "completed":
             result = t.get("result", "")
             return f"STATUS: DONE\n{result}"
@@ -2491,6 +2754,162 @@ def pipeline_tools(steps: list[dict]) -> str:
 
 # Tool Executor — maps tool names to functions
 # ═══════════════════════════════════════════════════════════════════════════════
+    try:
+        r = subprocess.run(cmd, capture_output=True, text=True, timeout=timeout / 1000)
+        output = r.stdout.strip()
+        if r.returncode != 0:
+            err = r.stderr.strip()[:500]
+            return f"(browser exited {r.returncode}: {err})" if err else f"(browser exited {r.returncode})"
+        return output if output else "(empty output)"
+    except subprocess.TimeoutExpired:
+        return f"(browser command timed out after {timeout}ms)"
+    except FileNotFoundError:
+        return "(agent-browser not found. Run: npm i -g agent-browser && agent-browser install)"
+    except Exception as e:
+        return f"(browser error: {e})"
+
+
+def web_fetch(url: str, max_chars: int = 15000) -> str:
+    """Fetch a URL via plain HTTP GET and return text content. No browser overhead.
+
+    Best for: documentation, API references, blog posts, static pages.
+    NOT for: JavaScript-rendered SPAs or pages requiring login.
+
+    Args:
+        url: The full URL to fetch (https://...).
+        max_chars: Maximum characters to return (default 15000).
+    """
+    if not url.startswith(("http://", "https://")):
+        url = "https://" + url
+    try:
+        import urllib.request
+        req = urllib.request.Request(url, headers={
+            "User-Agent": "Mozilla/5.0 (compatible; ResearchBot/1.0)",
+            "Accept": "text/html,text/plain,*/*",
+        })
+        with urllib.request.urlopen(req, timeout=15) as resp:
+            raw = resp.read()
+            # Try UTF-8 first, fallback to detected charset
+            content_type = resp.headers.get("Content-Type", "")
+            charset = "utf-8"
+            if "charset=" in content_type:
+                charset = content_type.split("charset=")[-1].split(";")[0].strip()
+            try:
+                text = raw.decode(charset)
+            except (UnicodeDecodeError, LookupError):
+                text = raw.decode("utf-8", errors="replace")
+
+        # Strip HTML tags for a clean text version
+        import re
+        text = re.sub(r"<script[^>]*>.*?</script>", "", text, flags=re.DOTALL | re.IGNORECASE)
+        text = re.sub(r"<style[^>]*>.*?</style>", "", text, flags=re.DOTALL | re.IGNORECASE)
+        text = re.sub(r"<[^>]+>", " ", text)
+        text = re.sub(r"\s+", " ", text).strip()
+
+        if not text:
+            return "(page returned no text content)"
+
+        if len(text) > max_chars:
+            text = text[:max_chars] + f"\n... (truncated, full length: {len(text)} chars)"
+
+        return f"[WEB] {url}\n{text[:max_chars]}"
+    except urllib.error.HTTPError as e:
+        return f"(HTTP {e.code}: {e.reason} for {url})"
+    except urllib.error.URLError as e:
+        return f"(connection error: {e.reason})"
+    except Exception as e:
+        return f"(fetch error: {e})"
+
+
+def browser_navigate(url: str, wait_ms: int = 5000) -> str:
+    """Open a URL in a headless browser and return the page content (accessibility snapshot).
+
+    Uses agent-browser (headless Chromium). Handles JavaScript-rendered pages,
+    SPAs, and complex web apps. Returns the accessibility tree with @ref selectors
+    that can be used with browser_extract.
+
+    Best for: JavaScript-rendered pages, SPAs, pages needing login, complex web apps.
+    Slower than web_fetch but handles everything.
+
+    Args:
+        url: The full URL to navigate to.
+        wait_ms: Milliseconds to wait for page load (default 5000).
+    """
+    if not url.startswith(("http://", "https://")):
+        url = "https://" + url
+    import time
+    # Open page
+    nav = _browser_cmd(["open", url], timeout_sec=30)
+    if nav.startswith("("):
+        return nav
+    # Let page settle
+    time.sleep(min(wait_ms / 1000, 3))
+    # Get snapshot + title
+    snapshot = _browser_cmd(["snapshot", "-i", "--max-output", "15000"], timeout_sec=20)
+    title = _browser_cmd(["get", "title"], timeout_sec=5)
+    title_str = title if "empty" not in title.lower() and "error" not in title.lower() else ""
+    return f"[BROWSER] {url}\nTitle: {title_str}\n\nAccessibility Tree:\n{snapshot[:15000]}"
+
+
+def _browser_cmd(args: list[str], timeout_sec: int = 30) -> str:
+    """Run an agent-browser CLI command. Daemon starts/stops automatically."""
+    import subprocess, os
+    agent_browser = "agent-browser"
+    if os.name == "nt":
+        npm_cmd = os.path.expanduser(r"~\AppData\Roaming\npm\agent-browser.cmd")
+        if os.path.isfile(npm_cmd):
+            agent_browser = npm_cmd
+    try:
+        r = subprocess.run([agent_browser] + args, capture_output=True, text=True, timeout=timeout_sec)
+        return r.stdout.strip() or "(empty)"
+    except FileNotFoundError:
+        return "(agent-browser not found. Run: npm i -g agent-browser)"
+    except subprocess.TimeoutExpired:
+        return f"(timed out after {timeout_sec}s)"
+    except Exception as e:
+        return f"(error: {e})"
+
+
+def browser_extract(what: str = "text", selector: str = "") -> str:
+    """Extract content from the current browser page.
+
+    Args:
+        what: What to extract — 'text' (default), 'html', 'value', 'title', 'url'.
+        selector: Optional CSS selector or @ref from snapshot. Empty = entire page.
+    """
+    valid = {"text", "html", "value", "title", "url", "attr"}
+    if what not in valid:
+        return f"(invalid: '{what}'. Valid: {', '.join(sorted(valid))})"
+    if what in ("title", "url"):
+        return _browser_cmd(["get", what], timeout_sec=5)
+    if selector:
+        return _browser_cmd(["get", what, selector], timeout_sec=15)
+    return _browser_cmd(["get", what, "body"], timeout_sec=15)
+
+
+def browser_screenshot(path: str = "") -> str:
+    """Take a screenshot of the current browser page.
+
+    Args:
+        path: Optional file path to save the screenshot. Auto-named if empty.
+    """
+    import os
+    if not path:
+        import uuid
+        screenshot_dir = os.path.join(os.environ.get("TEMP", "."), "agent-screenshots")
+        os.makedirs(screenshot_dir, exist_ok=True)
+        path = os.path.join(screenshot_dir, f"screenshot_{uuid.uuid4().hex[:8]}.png")
+    result = _browser_cmd(["screenshot", "--full", path], timeout_sec=20)
+    if os.path.isfile(path):
+        size = os.path.getsize(path)
+        return f"[SCREENSHOT] Saved to {path} ({size} bytes)"
+    return f"(screenshot result: {result})"
+
+
+def browser_close() -> str:
+    """Close the browser daemon and free resources."""
+    _browser_cmd(["close", "--all"], timeout_sec=10)
+    return "Browser closed."
 
 TOOL_MAP = {
     "read_file": read_file,
@@ -2513,6 +2932,11 @@ TOOL_MAP = {
     "pipeline_tools": pipeline_tools,
     "search_semantic_checkpoints": search_semantic_checkpoints,
     "search_codebase": search_codebase,
+    "web_fetch": web_fetch,
+    "browser_navigate": browser_navigate,
+    "browser_extract": browser_extract,
+    "browser_screenshot": browser_screenshot,
+    "browser_close": browser_close,
 }
 
 
@@ -2573,6 +2997,11 @@ _TOOL_REQUIRED_ARGS: dict[str, set[str]] = {
     "search_code": {"pattern"},
     "list_files": set(),
     "write_planning_file": {"file_path"},
+    "web_fetch": {"url"},
+    "browser_navigate": {"url"},
+    "browser_extract": set(),
+    "browser_screenshot": set(),
+    "browser_close": set(),
 }
 
 def pre_validate_tool_args(tool_name: str, args: dict) -> tuple[bool, str]:

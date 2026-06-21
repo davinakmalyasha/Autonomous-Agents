@@ -1,0 +1,20 @@
+{
+  "total_input_tokens": 1566,
+  "total_output_tokens": 152,
+  "total_cache_hit_tokens": 0,
+  "total_cache_miss_tokens": 1566,
+  "total_cost": 0.0002618,
+  "calls": [
+    {
+      "agent": "JarvisRouter",
+      "model": "deepseek-v4-flash",
+      "input": 1566,
+      "output": 152,
+      "cache_hits": 0,
+      "cache_misses": 1566,
+      "cost": 0.000262,
+      "timestamp": "06:57:05",
+      "where": "Routing user request"
+    }
+  ]
+}

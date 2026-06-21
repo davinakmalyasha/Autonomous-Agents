@@ -1,0 +1,70 @@
+Title: Live Content
+Description: Fetched live
+Source: https://docs.langchain.com/oss/python/deepagents/tools
+---
+Tools - Docs by LangChainDocumentation IndexFetch the complete documentation index at: /llms.txtUse this file to discover all available pages before exploring further.Skip to main contentDocs by LangChain home pageBuildSearch...⌘KAsk AIGitHubTry LangSmithTry LangSmithSearch...NavigationCore capabilitiesToolsOverviewDeep AgentsLangChainLangGraphIntegrationsLearnReferenceContributePythonOverviewGet startedQuickstartCustomizationComparison with Claude Agent SDKChangelogDeploymentManaged Deep AgentsPREVIEWGoing to productionCore capabilitiesOverviewModelsToolsContext engineeringBackendsSubagentsAsync subagentsHuman-in-the-loopPermissionsMemorySkillsSandboxesInterpretersBetaProfilesEvent streamingBetaStreamingGrading rubricsBetaFrontendOverviewPatternsProtocolsAgent Client Protocol (ACP)MCP with LangChainA2A with LangSmithCodeOverviewMemory and skillsRemote sandboxesSubagentsModel providersConfigurationMCP toolsApp dataOn this pageCustom toolsMCP toolsBuilt-in harness toolsCore capabilitiesToolsCopy pageConnect Deep Agents to custom functions, APIs, databases, and any MCP serverCopy pageDeep Agents can call any tool you define, any LangChain tool, and tools from any MCP server.
+Pass them to create_deep_agent via the tools= parameter alongside the built-in harness tools for planning, file management, and subagent spawning.
+from deepagents import create_deep_agent
+agent = create_deep_agent(
+model="anthropic:claude-sonnet-4-6",
+tools=[search, fetch_url, run_query],
+)
+​Custom tools
+Pass any callable — plain functions, LangChain @tool-decorated functions, or tool dicts — directly to tools=.
+Deep Agents infers the tool schema from the function signature and docstring, so you don’t need to define a separate schema in most cases.
+GoogleOpenAIAnthropicOpenRouterFireworksBasetenOllamaimport os
+from typing import Literal
+from tavily import TavilyClient
+from deepagents import create_deep_agent
+tavily_client = TavilyClient(api_key=os.environ["TAVILY_API_KEY"])
+def internet_search(
+query: str,
+max_results: int = 5,
+topic: Literal["general", "news", "finance"] = "general",
+include_raw_content: bool = False,
+):
+"""Run a web search"""
+return tavily_client.search(
+query,
+max_results=max_results,
+include_raw_content=include_raw_content,
+topic=topic,
+)
+agent = create_deep_agent(
+model="google_genai:gemini-3.5-flash",
+tools=[internet_search],
+)
+For full details on defining and using LangChain tools (tool dicts, StructuredTool, return types, error handling, and more), see Tools.
+​MCP tools
+Deep Agents fully support Model Context Protocol (MCP) — the open standard for connecting agents to external services. Load tools from any MCP server and pass them directly to create_deep_agent.
+MCP is an open protocol that lets agents connect to a growing ecosystem of servers — databases, APIs, file systems, browsers, and more — through a standard interface. Instead of writing custom integration code for each service, you point Deep Agents at an MCP server and it gets all the tools that server exposes.
+Install langchain-mcp-adapters to connect to MCP servers:
+pip install langchain-mcp-adapters
+import asyncio
+from langchain_mcp_adapters.client import MultiServerMCPClient
+from deepagents import create_deep_agent
+async def main():
+async with MultiServerMCPClient(
+{
+"my_server": {
+"transport": "http",
+"url": "http://localhost:8000/mcp",
+}
+}
+) as client:
+tools = await client.get_tools()
+agent = create_deep_agent(
+model="openai:gpt-5.4",
+tools=tools,
+)
+result = await agent.ainvoke(
+{"messages": [{"role": "user", "content": "Use the MCP server to help me."}]},
+config={"configurable": {"thread_id": "1"}},
+)
+asyncio.run(main())
+For detailed configuration options — including stdio servers, OAuth authentication, tool filtering, and stateful sessions — see the full MCP guide.
+​Built-in harness tools
+In addition to the tools you provide, every Deep Agent comes with a built-in set of tools from the harness:
+ToolDescriptionlsList files in a directoryread_fileRead file contents (with pagination and multimodal support)write_fileCreate new filesedit_filePerform exact string replacements in filesglobFind files matching a glob patterngrepSearch file contentsexecuteRun shell commands (sandbox backends only)taskSpawn a subagent to handle a delegated taskwrite_todosManage a structured todo list
+For a full breakdown of what each built-in tool does, see Harness capabilities.
+Connect these docs to Claude, VSCode, and more via MCP for real-time answers.Edit this page on GitHub or file an issue.Was this page helpful?YesNoModelsPreviousContext engineering in Deep AgentsNext⌘IDocs by LangChain home pagegithubxlinkedinyoutubeResourcesForumChangelogLangChain AcademyContact SalesCompanyHomeTrust CenterCareersBloggithubxlinkedinyoutube

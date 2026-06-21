@@ -1,0 +1,8 @@
+=== Message [ai] ===
+```tool
+{"tool": "list_files", "args": {"path": "D:\\MyProject\\TestProjectForAgent", "recursive": true}}
+```
+
+=== Message [human] ===
+[list_files]:
+D:\MyProject\TestProjectForAgent/ (recursive)

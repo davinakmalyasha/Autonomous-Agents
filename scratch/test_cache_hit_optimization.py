@@ -13,25 +13,33 @@ from tools import LocalShellBackend
 
 class TestCacheHitOptimization(unittest.TestCase):
     def test_tool_compaction_threshold_bypass(self):
-        # Create a history of 10 messages (longer than 8)
+        # Create a history of 18 messages (longer than 8) to test compaction with protect_last_6
         messages = [
             HumanMessage(content="System"),
             HumanMessage(content="Task"),
             AIMessage(content="thoughts\n```tool\n{\"tool\": \"read_file\", \"args\": {\"file_path\": \"a.txt\"}}\n```"),
-            HumanMessage(content="[read_file]:\ncontent of a.txt"),
+            HumanMessage(content="[read_file]:\n[FILE] a.txt\ncontent of a.txt"), # Index 3
             AIMessage(content="thoughts\n```tool\n{\"tool\": \"read_file\", \"args\": {\"file_path\": \"b.txt\"}}\n```"),
-            HumanMessage(content="[read_file]:\ncontent of b.txt"),
+            HumanMessage(content="[read_file]:\n[FILE] b.txt\ncontent of b.txt"), # Index 5
             AIMessage(content="thoughts\n```tool\n{\"tool\": \"read_file\", \"args\": {\"file_path\": \"c.txt\"}}\n```"),
-            HumanMessage(content="[read_file]:\ncontent of c.txt"),
+            HumanMessage(content="[read_file]:\n[FILE] c.txt\ncontent of c.txt"), # Index 7
             AIMessage(content="thoughts\n```tool\n{\"tool\": \"read_file\", \"args\": {\"file_path\": \"d.txt\"}}\n```"),
-            HumanMessage(content="[read_file]:\ncontent of d.txt")
+            HumanMessage(content="[read_file]:\n[FILE] d.txt\ncontent of d.txt"), # Index 9
+            AIMessage(content="thoughts\n```tool\n{\"tool\": \"read_file\", \"args\": {\"file_path\": \"e.txt\"}}\n```"),
+            HumanMessage(content="[read_file]:\n[FILE] e.txt\ncontent of e.txt"), # Index 11
+            AIMessage(content="thoughts\n```tool\n{\"tool\": \"read_file\", \"args\": {\"file_path\": \"f.txt\"}}\n```"),
+            HumanMessage(content="[read_file]:\n[FILE] f.txt\ncontent of f.txt"), # Index 13
+            AIMessage(content="thoughts\n```tool\n{\"tool\": \"read_file\", \"args\": {\"file_path\": \"g.txt\"}}\n```"),
+            HumanMessage(content="[read_file]:\n[FILE] g.txt\ncontent of g.txt"), # Index 15
+            AIMessage(content="thoughts\n```tool\n{\"tool\": \"read_file\", \"args\": {\"file_path\": \"a.txt\"}}\n```"),
+            HumanMessage(content="[read_file]:\n[FILE] a.txt\ncontent of a.txt")  # Index 17
         ]
         
         # Verify compact_successful_tools functions correctly
         compacted = compact_successful_tools(messages)
-        # Indeces of tool results: 3 (a.txt), 5 (b.txt), 7 (c.txt), 9 (d.txt)
-        # Protected (last 3): 5, 7, 9
-        # So only index 3 should be compacted
+        # Index 3 (a.txt) is superseded by index 17, and outside the last 6 protected tool results.
+        # Index 5 (b.txt) is outside the last 6, but NOT superseded.
+        # So only index 3 should be compacted.
         self.assertTrue(compacted[3].content.startswith("[TOOL OK]"))
         self.assertFalse(compacted[5].content.startswith("[TOOL OK]"))
         self.assertFalse(compacted[7].content.startswith("[TOOL OK]"))
