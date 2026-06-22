@@ -871,8 +871,20 @@ def _check_and_request_approval(file_path: str, action: str):
     import os
     norm_path = os.path.normpath(file_path).lower()
     base_name = os.path.basename(norm_path)
+
+    # Core settings files should only be blocked if they are modified inside the main LangChain codebase folder.
+    # Subagents executing inside sandbox workspaces (e.g. TestProjectForAgent) must be allowed to create/edit package.json, etc.
+    active_ws = shared_state.get("project_path") or WORKSPACE
+    active_ws_norm = os.path.normpath(active_ws).lower()
+    langchain_root = r"d:\myproject\langchain"
     
-    is_core_config = (
+    in_langchain = (
+        norm_path.startswith(langchain_root)
+        or (not norm_path.startswith("c:") and not norm_path.startswith("d:")) # Relative paths are usually inside active project
+        and langchain_root in active_ws_norm
+    )
+
+    is_core_config = in_langchain and (
         ".deep_agents" in norm_path
         or ".antigravity" in norm_path
         or base_name in [
@@ -2945,12 +2957,46 @@ def execute_tool(name: str, args: dict) -> str:
     if name not in TOOL_MAP:
         return f"Error: Unknown tool '{name}'. Available tools: {', '.join(TOOL_MAP.keys())}"
     try:
+        # Normalize and map common parameter variations based on tool signature
+        import inspect
+        func = TOOL_MAP[name]
+        try:
+            sig = inspect.signature(func)
+            param_names = list(sig.parameters.keys())
+        except Exception:
+            param_names = []
+            
+        args = dict(args)
+        
+        # 1. Map 'path' or 'filepath' -> 'file_path' if tool expects 'file_path'
+        if "file_path" in param_names and "file_path" not in args:
+            for alt in ("path", "filepath", "file"):
+                if alt in args:
+                    args["file_path"] = args.pop(alt)
+                    break
+                    
+        # 2. Map 'cmd' -> 'command' if tool expects 'command'
+        if "command" in param_names and "command" not in args:
+            if "cmd" in args:
+                args["command"] = args.pop("cmd")
+                
+        # 3. Map subagent task parameter variations
+        if "name" in param_names and "name" not in args:
+            for alt in ("agent", "subagent"):
+                if alt in args:
+                    args["name"] = args.pop(alt)
+                    break
+        if "task" in param_names and "task" not in args:
+            for alt in ("instruction", "instructions", "prompt", "body"):
+                if alt in args:
+                    args["task"] = args.pop(alt)
+                    break
+
         # ── Pillar 113: Check read-only tool response cache ──
         cached = _check_tool_cache(name, args)
         if cached is not None:
             return cached
 
-        func = TOOL_MAP[name]
         result = func(**args)
 
         # ── Store in cache for read-only tools ──

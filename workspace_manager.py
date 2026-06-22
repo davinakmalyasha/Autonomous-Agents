@@ -237,8 +237,8 @@ def get_chat(workspace_path: str, chat_id: str, include_traces: bool = True, inc
 
         if trace_messages:
             combined = chat.get("messages", []) + trace_messages
-            # Sort using the stored 'index' key, fallback to timestamp
-            combined.sort(key=lambda m: m.get("index", 0) if "index" in m else m.get("timestamp", ""))
+            # Sort chronologically by timestamp
+            combined.sort(key=lambda m: m.get("timestamp", ""))
             chat["messages"] = combined
 
     # Load token usage if requested and exists
@@ -259,8 +259,9 @@ def save_chat(workspace_path: str, chat_id: str, data: dict) -> bool:
     _ensure_dir(_chat_dir(workspace_path))
     data["updatedAt"] = datetime.now().isoformat()
     
-    # Store order index on all messages
+    # Store order index on all messages chronologically
     messages = data.get("messages", [])
+    messages.sort(key=lambda m: m.get("timestamp", ""))
     for idx, m in enumerate(messages):
         m["index"] = idx
 

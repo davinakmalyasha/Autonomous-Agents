@@ -100,13 +100,30 @@ _CHAT_KEYWORDS = {"hello", "hi", "hey", "thanks", "thank you", "good morning",
 
 def _is_obvious_chat(text: str) -> bool:
     """Quick keyword check — true if it's clearly just a greeting/thanks, not a task."""
-    t = text.lower().strip().rstrip(".!?").split()
-    if len(t) > 6:
-        return False  # too long to be just a greeting
-    return any(kw in text.lower() for kw in _CHAT_KEYWORDS) and not any(
-        kw in text.lower() for kw in ["build", "create", "make", "write", "code",
-                                       "fix", "implement", "add", "change", "modify",
-                                       "delete", "remove", "refactor", "deploy", "run", "test"])
+    import re
+    text_lower = text.lower().strip()
+    words = text_lower.rstrip(".!?").split()
+    if len(words) > 6:
+        return False
+    
+    # Greetings & thanks keyword check with word boundaries to avoid substring matches
+    greetings = [
+        r"\bhello\b", r"\bhi\b", r"\bhey\b", r"\bthanks\b", r"\bthank\s+you\b",
+        r"\bgood\s+morning\b", r"\bgood\s+afternoon\b", r"\bhow\s+are\s+you\b",
+        r"\bwhat's\s+up\b", r"\bbye\b", r"\bgoodbye\b"
+    ]
+    has_greeting = any(re.search(pattern, text_lower) for pattern in greetings)
+    if not has_greeting:
+        return False
+
+    # Ensure it doesn't contain any task action words
+    actions = [
+        "build", "create", "make", "write", "code", "fix", "implement",
+        "add", "change", "modify", "delete", "remove", "refactor", "deploy",
+        "run", "test"
+    ]
+    has_action = any(re.search(rf"\b{act}\b", text_lower) for act in actions)
+    return not has_action
 
 
 @app.post("/api/run")
@@ -355,6 +372,39 @@ async def get_chat_endpoint(workspace_id: str, chat_id: str):
     if not chat:
         return JSONResponse(content={"error": "Chat not found"}, status_code=404)
     return JSONResponse(content=chat)
+
+
+@app.get("/api/workspaces/{workspace_id}/chats/{chat_id}/subagents/{subagent_name}")
+async def get_subagent_history_endpoint(workspace_id: str, chat_id: str, subagent_name: str):
+    ws = wm.get_workspace(workspace_id)
+    if not ws:
+        return JSONResponse(content={"error": "Workspace not found"}, status_code=404)
+    
+    valid_subagents = {"Dev", "BA", "SA", "DevOps", "Refinement", "Analytics", "Critic", "Designer"}
+    if subagent_name not in valid_subagents:
+        return JSONResponse(content={"error": "Invalid subagent name"}, status_code=400)
+    
+    from subagent_swarm import load_subagent_history
+    try:
+        messages = load_subagent_history(chat_id, subagent_name)
+        serialized = []
+        for m in messages:
+            role = "user"
+            m_type = type(m).__name__
+            if m_type == "SystemMessage":
+                role = "system"
+            elif m_type == "AIMessage":
+                role = "assistant"
+            elif m_type == "HumanMessage":
+                role = "user"
+            
+            serialized.append({
+                "role": role,
+                "content": m.content,
+            })
+        return JSONResponse(content=serialized)
+    except Exception as e:
+        return JSONResponse(content={"error": str(e)}, status_code=500)
 
 
 @app.delete("/api/workspaces/{workspace_id}/chats/{chat_id}")

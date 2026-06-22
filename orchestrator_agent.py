@@ -22,7 +22,7 @@ from state_sync import shared_state
 from it_department_nodes_base import ITState
 from tools import execute_tool, TOOL_DEFINITIONS
 from llm import invoke_messages_with_fallback
-from developer_agent import _parse_tool_call
+from developer_agent import _parse_tool_call, parse_all_tool_calls
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
@@ -556,7 +556,11 @@ def _extract_text_response(text: str) -> str:
 
 
 def _log(msg: str) -> None:
-    """Log to the shared state live terminal."""
+    """Log to console and the shared state live terminal."""
+    try:
+        print(msg, flush=True)
+    except Exception:
+        pass
     if "live_terminal_log" in shared_state:
         shared_state["live_terminal_log"] += msg + "\n"
 
@@ -635,17 +639,11 @@ def orchestrator_node(s: ITState) -> dict:
         if hasattr(response, "additional_kwargs"):
             reasoning_content = response.additional_kwargs.get("reasoning_content")
 
+        if reasoning_content:
+            _log(f"🧠 Supervisor: {reasoning_content.strip()}")
+
         # ── Parse tool calls ──
-        tool_calls = []
-        for match in re.finditer(r'```tool\s*\n(.*?)\n```', content, re.DOTALL):
-            tc = _parse_tool_call(match.group(0))
-            if tc:
-                tool_calls.append(tc)
-        # Also try the whole response as a single tool call
-        if not tool_calls:
-            tc = _parse_tool_call(content)
-            if tc:
-                tool_calls.append(tc)
+        tool_calls = parse_all_tool_calls(content)
 
         if not tool_calls:
             # Agent is done — no more tools to call
@@ -655,7 +653,7 @@ def orchestrator_node(s: ITState) -> dict:
             ))
             clean_response = _extract_text_response(content)
             _log(f"\n[ORCHESTRATOR] Agent finished after {iteration} iterations")
-            _log(f"[ORCHESTRATOR] Summary: {clean_response[:500]}")
+            _log(f"🤖 Assistant: {clean_response}")
             break
 
         # ── Record AI response ──
@@ -671,6 +669,8 @@ def orchestrator_node(s: ITState) -> dict:
         for tc in tool_calls:
             tool_name = tc.get("tool", "")
             args = tc.get("args", {})
+            if not args or not isinstance(args, dict):
+                args = {k: v for k, v in tc.items() if k not in ("tool", "args")}
 
             if tool_name not in valid_tools:
                 tool_results.append(
@@ -688,11 +688,16 @@ def orchestrator_node(s: ITState) -> dict:
                 continue
 
             try:
+                import json
+                _log(f"🔧 Calling {tool_name}({json.dumps(args)})")
                 result = execute_tool(tool_name, args)
                 result_str = str(result)
                 # Truncate long results
                 if len(result_str) > 8000:
                     result_str = result_str[:4000] + "\n... (truncated middle) ...\n" + result_str[-4000:]
+                
+                # Log tool output for frontend trace tracking
+                _log(f"[TOOL OUTPUT] {tool_name}: {result_str}")
                 tool_results.append(f"[{tool_name}] {result_str}")
                 tool_call_log.append({"tool": tool_name, "args": args, "iteration": iteration})
             except Exception as e:

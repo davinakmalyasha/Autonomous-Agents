@@ -121,7 +121,7 @@ def _extract_native_tool_calls(res) -> list[dict]:
     return tool_calls
 
 
-def _get_deepseek_client(model: str, temp: float, role: Optional[str] = None, response_format: Optional[dict] = None, tools: Optional[list[dict]] = None, reasoning_effort: Optional[str] = None) -> BaseChatModel:
+def _get_deepseek_client(model: str, temp: float, role: Optional[str] = None, response_format: Optional[dict] = None, tools: Optional[list[dict]] = None, reasoning_effort: Optional[str] = None, messages: Optional[list] = None) -> BaseChatModel:
     """Create a DeepSeek ChatOpenAI client with role-based max_tokens and optional native tools."""
     key = os.getenv("DEEPSEEK_API_KEY", "")
     if not key or key.startswith("your_"):
@@ -168,58 +168,70 @@ def _get_deepseek_client(model: str, temp: float, role: Optional[str] = None, re
         kwargs.setdefault("model_kwargs", {})["tools"] = tools
 
     # Configure native thinking mode dynamically by role/model.
-    # Orchestrator (Developer/DeveloperFixing) uses pro + max thinking for deepest reasoning.
-    # Subagents use flash + medium for speed.
-    if reasoning_effort is not None:
-        if reasoning_effort == "disabled":
-            kwargs["extra_body"] = {"thinking": {"type": "disabled"}}
-        else:
-            kwargs["extra_body"] = {"thinking": {"type": "enabled"}}
-            kwargs["reasoning_effort"] = reasoning_effort
-    else:
-        is_pro = "pro" in model.lower()
-        is_flash = "flash" in model.lower()
-        is_orchestrator = (
-            role in ["Developer", "DeveloperFixing"]
-            or (role and any(x in role.lower() for x in ["developer", "orchestrator", "designer"]))
-        )
-        is_heavy = is_orchestrator or (
-            role in ["Supervisor", "sa", "Coder"]
-            or (role and any(x in role.lower() for x in ["fixing", "coder", "architect", "complex"]))
-        )
+    # Only send thinking parameters if the model supports it or is a fallback model.
+    is_reasoning_model = any(x in model.lower() for x in ["r1", "pro", "o1", "o3", "reasoning", "thinking", "fallback", "automatic"])
 
-        if remaining_steps is not None and remaining_steps < 5:
-            if is_heavy:
-                kwargs["extra_body"] = {"thinking": {"type": "enabled"}}
-                kwargs["reasoning_effort"] = "medium"
-            else:
+    if is_reasoning_model:
+        depth = len(messages) if messages else 0
+        is_first_turn = depth <= 3
+
+        if reasoning_effort is not None:
+            if reasoning_effort == "disabled":
                 kwargs["extra_body"] = {"thinking": {"type": "disabled"}}
-        else:
-            # Orchestrator: always use maximum reasoning effort (max thinking level)
-            # Subagent heavy: pro + high thinking
-            # Standard: flash/medium or pro/medium
-            if is_orchestrator:
-                kwargs["extra_body"] = {"thinking": {"type": "enabled"}}
-                kwargs["reasoning_effort"] = "max"
-            elif is_pro and is_heavy:
-                kwargs["extra_body"] = {"thinking": {"type": "enabled"}}
-                kwargs["reasoning_effort"] = "high"
-            elif is_flash:
-                kwargs["extra_body"] = {"thinking": {"type": "enabled"}}
-                kwargs["reasoning_effort"] = "medium"
-            elif is_pro:
-                kwargs["extra_body"] = {"thinking": {"type": "enabled"}}
-                kwargs["reasoning_effort"] = "high"
             else:
-                # Fallback config
-                if role == "DeveloperFixing":
+                kwargs["extra_body"] = {"thinking": {"type": "enabled"}}
+                kwargs["reasoning_effort"] = reasoning_effort
+        else:
+            is_pro = "pro" in model.lower()
+            is_flash = "flash" in model.lower()
+            is_orchestrator = (
+                role in ["Developer", "DeveloperFixing"]
+                or (role and any(x in role.lower() for x in ["developer", "orchestrator", "designer"]))
+            )
+            is_heavy = is_orchestrator or (
+                role in ["Supervisor", "sa", "Coder"]
+                or (role and any(x in role.lower() for x in ["fixing", "coder", "architect", "complex"]))
+            )
+
+            if remaining_steps is not None and remaining_steps < 5:
+                if is_heavy:
                     kwargs["extra_body"] = {"thinking": {"type": "enabled"}}
-                    kwargs["reasoning_effort"] = "max"
-                elif role == "Developer":
-                    kwargs["extra_body"] = {"thinking": {"type": "enabled"}}
-                    kwargs["reasoning_effort"] = "max"
+                    kwargs["reasoning_effort"] = "medium"
                 else:
                     kwargs["extra_body"] = {"thinking": {"type": "disabled"}}
+            else:
+                if is_orchestrator:
+                    if is_first_turn:
+                        kwargs["extra_body"] = {"thinking": {"type": "enabled"}}
+                        kwargs["reasoning_effort"] = "max"
+                    else:
+                        kwargs["extra_body"] = {"thinking": {"type": "disabled"}}
+                elif is_pro and is_heavy:
+                    if is_first_turn:
+                        kwargs["extra_body"] = {"thinking": {"type": "enabled"}}
+                        kwargs["reasoning_effort"] = "high"
+                    else:
+                        kwargs["extra_body"] = {"thinking": {"type": "disabled"}}
+                elif is_flash:
+                    kwargs["extra_body"] = {"thinking": {"type": "disabled"}}
+                elif is_pro:
+                    if is_first_turn:
+                        kwargs["extra_body"] = {"thinking": {"type": "enabled"}}
+                        kwargs["reasoning_effort"] = "high"
+                    else:
+                        kwargs["extra_body"] = {"thinking": {"type": "disabled"}}
+                else:
+                    if role == "DeveloperFixing":
+                        kwargs["extra_body"] = {"thinking": {"type": "enabled"}}
+                        kwargs["reasoning_effort"] = "max"
+                    elif role == "Developer":
+                        if is_first_turn:
+                            kwargs["extra_body"] = {"thinking": {"type": "enabled"}}
+                            kwargs["reasoning_effort"] = "max"
+                        else:
+                            kwargs["extra_body"] = {"thinking": {"type": "disabled"}}
+                    else:
+                        kwargs["extra_body"] = {"thinking": {"type": "disabled"}}
 
     return ChatOpenAI(**kwargs)
 
@@ -393,8 +405,6 @@ def invoke_with_fallback(
                 action = where[:120].replace('\n', ' ').strip() if where else "processing..."
                 log_terminal(f"[{role}] {action}")
             response_format = {"type": "json_object"} if schema else None
-            llm = _get_deepseek_client(model, selected_temp, role, response_format=response_format)
-            tracker = TokenUsageTracker()
 
             # If schema requested, add JSON guidelines to prompt and enable native response_format
             effective_sys = trim_prompt(sys_inst)
@@ -416,6 +426,9 @@ def invoke_with_fallback(
                 HumanMessage(content=effective_prompt),
             ]
 
+            llm = _get_deepseek_client(model, selected_temp, role, response_format=response_format, messages=messages)
+            tracker = TokenUsageTracker()
+
             _throttle.acquire()
             try:
                 res = llm.invoke(
@@ -426,7 +439,7 @@ def invoke_with_fallback(
                 _throttle.release()
             reasoning = res.additional_kwargs.get("reasoning_content") if hasattr(res, "additional_kwargs") else None
             if reasoning:
-                log_terminal(f"\n[{role} THOUGHTS] >> {reasoning[:500]}\n")
+                log_terminal(f"\n[{role} THOUGHTS] >> {reasoning}\n")
             raw_text = _extract_text(getattr(res, "content", None))
             if not raw_text and reasoning:
                 raw_text = reasoning
@@ -474,8 +487,6 @@ def invoke_with_fallback(
                     )
                     time.sleep(wait)
                     try:
-                        llm = _get_deepseek_client(model, selected_temp, role, response_format=response_format)
-                        tracker = TokenUsageTracker()
                         effective_sys = trim_prompt(sys_inst)
                         if schema:
                             fields = schema.model_fields
@@ -492,6 +503,8 @@ def invoke_with_fallback(
                             SystemMessage(content=effective_sys),
                             HumanMessage(content=trim_prompt(prompt)),
                         ]
+                        llm = _get_deepseek_client(model, selected_temp, role, response_format=response_format, messages=retry_msgs)
+                        tracker = TokenUsageTracker()
                         _throttle.acquire()
                         try:
                             res = llm.invoke(
@@ -643,7 +656,7 @@ def invoke_messages_with_fallback(
                 action = where[:120].replace('\n', ' ').strip() if where else "processing..."
                 log_terminal(f"[{role}] {action}")
             response_format = {"type": "json_object"} if schema is not None else None
-            llm = _get_deepseek_client(model, selected_temp, role, response_format=response_format, tools=tools, reasoning_effort=reasoning_effort)
+            llm = _get_deepseek_client(model, selected_temp, role, response_format=response_format, tools=tools, reasoning_effort=reasoning_effort, messages=trimmed_messages)
             tracker = TokenUsageTracker()
             _throttle.acquire()
             try:
@@ -652,7 +665,7 @@ def invoke_messages_with_fallback(
                 _throttle.release()
             reasoning = res.additional_kwargs.get("reasoning_content") if hasattr(res, "additional_kwargs") else None
             if reasoning:
-                log_terminal(f"\n[{role} THOUGHTS] >> {reasoning[:500]}\n")
+                log_terminal(f"\n[{role} THOUGHTS] >> {reasoning}\n")
             # Extract native tool_calls if present (structured function calling)
             native_tool_calls = _extract_native_tool_calls(res)
             # DeepSeek with thinking enabled may return reasoning_content but empty content.
@@ -695,7 +708,7 @@ def invoke_messages_with_fallback(
                     time.sleep(wait)
                     try:
                         response_format = {"type": "json_object"} if schema is not None else None
-                        llm = _get_deepseek_client(model, selected_temp, role, response_format=response_format, tools=tools, reasoning_effort=reasoning_effort)
+                        llm = _get_deepseek_client(model, selected_temp, role, response_format=response_format, tools=tools, reasoning_effort=reasoning_effort, messages=trimmed_messages)
                         tracker = TokenUsageTracker()
                         _throttle.acquire()
                         try:
@@ -706,7 +719,7 @@ def invoke_messages_with_fallback(
                             _throttle.release()
                         reasoning = res.additional_kwargs.get("reasoning_content") if hasattr(res, "additional_kwargs") else None
                         if reasoning:
-                            log_terminal(f"\n[{role} THOUGHTS] >> {reasoning[:500]}\n")
+                            log_terminal(f"\n[{role} THOUGHTS] >> {reasoning}\n")
                         native_tool_calls = _extract_native_tool_calls(res)
                         val = _extract_text(getattr(res, "content", None))
                         if not val and reasoning:

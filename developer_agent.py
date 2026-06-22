@@ -24,10 +24,8 @@ except Exception:
 from workspace_manager import get_workspace_rules_and_profile
 from repo_map_generator import RepoMapGenerator
 from dev_memory_helper import get_developer_memory_context
-from dev_skills import load_skills_context
-from loop_detector import detect_stagnation_or_loop
-from sync_helpers import load_task_tracking, save_task_tracking
-from dev_utils import extract_traceback_files_context, parse_all_tool_calls
+from loop_detector import detect_stagnation_or_loop, LoopGuard
+from sync_helpers import load_task_tracking, save_task_tracking, build_task_progress_block
 from chat_context import build_chat_context
 from context_budget import estimate_tokens, ContextBudget
 from context_compaction import (
@@ -60,18 +58,12 @@ def _detect_test_command(project_path: str) -> str:
     
     # Python: pytest
     py_test_files = [f for f in os.listdir(project_path) 
-def _detect_test_command(project_path: str) -> str:
-    """Detect the appropriate test command for the project type."""
-    if not project_path or not os.path.isdir(project_path):
-        return ""
-    
-    # Python: pytest
-    py_test_files = [f for f in os.listdir(project_path) 
                      if f.startswith("test_") and f.endswith(".py")]
     if py_test_files:
-{"step_index":81,"source":"MODEL","type":"VIEW_FILE","status":"DONE","created_at":"2026-06-21T02:42:55Z","content":"Created At: 2026-06-21T02:42:55Z\nCompleted At: 2026-06-21T02:42:56Z\nFile Path: `file:///d:/MyProject/LangChain/context_budget.py`\nTotal Lines: 33\nTotal Bytes: 1108\nShowing lines 1 to 33\nThe following code has been modified to include a line number before every line, in the format: <line_number>: <original_line>. Please note that any changes targeting the original code should remove the line number, colon, and leading space.\n1: \"\"\"\n2: Context Budget Management.\n3: Provides token estimation and context budget calculations to prevent context window overflow.\n4: \"\"\"\n5: from typing import NamedTuple\n6: \n7: class ContextBudget(NamedTuple):\n8:     model_limit: int       # e.g. 1000000 for deepseek-v4\n9:     reserved_output: int   # max_tokens for response\n10:     system_tokens: int     # system prompt tokens\n11:     dynamic_tokens: int    # dynamic context tokens\n12:     history_tokens: int    # current message history tokens\n13: \n14:     @property\n15:     def available_for_history(self) -> int:\n16:         return self.model_limit - self.reserved_output - self.system_tokens - self.dynamic_tokens\n17: \n18:     @property\n19:     def utilization(self) -> float:\n20:         return self.history_tokens / max(self.available_for_history, 1)\n21: \n22:     @property\n23:     def needs_compaction(self) -> bool:\n24:         # Compact when message history consumes > 75% of available space\n25:         return self.utilization > 0.75\n26: \n27: \n28: def estimate_tokens(text: str) -> int:\n29:     \"\"\"Fast heuristic: DeepSeek averages ~3.5 chars per token for mixed code/text.\"\"\"\n30:     if not text:\n31:         return 0\n32:     return max(1, len(text) // 3)\n33: \nThe above content shows the entire, complete file contents of the requested file.\n"}
-{"step_index":82,"source":"MODEL","type":"VIEW_FILE","status":"DONE","created_at":"2026-06-21T02:42:56Z","content":"Created At: 2026-06-21T02:42:56Z\nCompleted At: 2026-06-21T02:42:57Z\nFile Path: `file:///d:/MyProject/LangChain/developer_agent.py`\nTotal Lines: 2739\nTotal Bytes: 125067\nShowing lines 1720 to 1760\nThe following code has been modified to include a line number before every line, in the format: <line_number>: <original_line>. Please note that any changes targeting the original code should remove the line number, colon, and leading space.\n1720:             _log(\"[DEVELOPER] ⚠️ Out of remaining steps budget — forcing exit.\")\r\n1721:             break\r\n1722: \r\n1723:         # ── Auto-compact: Claude Code style context management ──\r\n1724:         # When context grows too large, apply 3-Tier compaction strategy based on token budget\r\n1725: \r\n1726:         # Three-zone: history starts at index 2 (after SystemMessage + Task HumanMessage)\r\n1727:         # Three-zone: history starts at index 2 (after SystemMessage + Task HumanMessage)\r\n1728:         system_tokens = estimate_tokens(messages[0].content) if len(messages) > 0 else 0\r\n1729:         dynamic_tokens = estimate_tokens(messages[1].content) if len(messages) > 1 else 0\r\n1730:         history_tokens = 0\r\n1731:         for m in messages[2:]:\r\n1732:             if hasattr(m, \"content\") and m.content:\r\n1733:                 history_tokens += estimate_tokens(m.content)\r\n1734:         total_tokens = system_tokens + dynamic_tokens + history_tokens\r\n1735: \r\n1736:         budget = ContextBudget(\r\n1737:             model_limit=1_000_000,\r\n1738:             reserved_output=8000,\r\n1739:             system_tokens=system_tokens,\r\n1740:             dynamic_tokens=dynamic_tokens,\r\n1741:             history_tokens=history_tokens,\r\n1742:         )\r\n1743: \r\n1744:         # Check if the agent requested on-demand compaction via the compact_conversation tool\r\n1745:         voluntary_compact = voluntary_compact_requested\r\n1746: \r\n1747:         # Pillar 111: Adaptive threshold — shallower runs tolerate more, deep loops compact earlier\r\n1748:         compact_threshold = get_compaction_threshold(iteration) if iteration > 0 else 0.90\r\n1749:         keep_n = 12\r\n1750: \r\n1751:         # 3-Tier Progressive Compaction Strategy\r\n1752:         if voluntary_compact:\r\n1753:             _log(f\"[DEVELOPER] Voluntary compaction requested. Running Tier 3 Checkpoint-Based Compaction.\")\r\n1754:             if len(messages) > keep_n + 2:\r\n1755:                 messages = checkpoint_compact(\r\n1756:                     messages,\r\n1757:                     tool_call_log,\r\n1758:                     tracked_files_created,\r\n1759:                     tracked_files_modified,\r\n1760:                     keep_last_n=keep_n\r\nThe above content does NOT show the entire file contents. If you need to view any lines of the file which were not shown to complete your task, call this tool again to view those lines.\n"}
-{"step_index":83,"source":"MODEL","type":"VIEW_FILE","status":"DONE","created_at":"2026-06-21T02:42:57Z","content":"Created At: 2026-06-21T02:42:57Z\nCompleted At: 2026-06-21T02:42:57Z\nFile Path: `file:///d:/MyProject/LangChain/developer_agent.py`\nTotal Lines: 2739\nTotal Bytes: 125067\nShowing lines 2470 to 2500\nThe following code has been modified to include a line number before every line, in the format: <line_number>: <original_line>. Please note that any changes targeting the original code should remove the line number, colon, and leading space.\n2470:                 ai_msg_id = f\"dev-ai-{iteration}-{uuid.uuid4()}\"\r\n2471:                 human_msg_id = f\"dev-human-{iteration}-{uuid.uuid4()}\"\r\n2472:                 additional_kwargs = {}\r\n2473:                 if reasoning_content:\r\n2474:                     additional_kwargs[\"reasoning_content\"] = reasoning_content\r\n2475:                 messages.append(AIMessage(content=response_text, id=ai_msg_id, additional_kwargs=additional_kwargs))\r\n2476:                 messages.append(HumanMessage(\r\n2477:                     content=(\r\n2478:                         \"You described what you would do but did NOT actually call any tools. \"\r\n2479:                         \"Zero files were created. You MUST use tools to make progress.\\n\\n\"\r\n2480:                         \"Call tools using ONE of these formats:\\n\\n\"\r\n2481:                         \"Format A:\\n```tool\\n\"\r\n2482:                         '{\"tool\": \"write_file\", \"args\": {\"file_path\": \"output.txt\", \"content\": \"...\"}}\\n'\r\n2483:                         \"```\\n\\n\"\r\n2484:                         \"Format B:\\n<tool_call name=\\\"write_file\\\">\\n\"\r\n2485:                         '{\"file_path\": \"output.txt\", \"content\": \"...\"}\\n'\r\n2486:                         \"</tool_call>\\n\\n\"\r\n2487:                         \"DO NOT just describe what you would do. Actually call the tools NOW. \"\r\n2488:                         \"Write the files. Run the commands. Make it happen.\"\r\n2489:                     ),\r\n2490:                     id=human_msg_id\r\n2491:                 ))\r\n2492:                 appended_ids.extend([ai_msg_id, human_msg_id])\r\n2493:                 continue  # Re-enter the loop with the nudge\r\n2494:             elif no_tools_called and no_files_created and looks_like_description:\r\n2495:                 _log(\"[DEVELOPER] ❌ AGENT DESCRIBED INSTEAD OF DOING after 2 nudges — giving up, marking as error\")\r\n2496:                 is_error = True\r\n2497:                 clean_response = (\r\n2498:                     \"ERROR: Agent was nudged 2 times to call tools but still only described plans. \"\r\n2499:                     \"Zero files were created. The LLM repeatedly output descriptions instead of \"\r\n2500:                     \"using the tool format.\\n\\n\"\r\nThe above content does NOT show the entire file contents. If you need to view any lines of the file which were not shown to complete your task, call this tool again to view those lines.\n"}
+        return "pytest"
+    
+    # Node.js: npm test
+    pkg_json = os.path.join(project_path, "package.json")
 
     if os.path.isfile(pkg_json):
         try:
@@ -153,9 +145,10 @@ Prioritize the philosophy: "The best code is the code you never wrote." Adopt th
 3. **Is there a native platform feature?** If yes, use it (e.g., native CSS/HTML forms, native browser features, database constraints).
 4. **Does an already-installed dependency solve it?** If yes, use it. Do NOT add new npm/pip packages for simple tasks.
 5. **Can it be one line?** If yes, make it one line.
-6. **Only then:** Write the absolute minimum code that passes the test.
+6. **Only then:** Write the absolute minimum code necessary to make the failing test pass (Red-Green-Refactor). Never write code without a failing test first, and avoid adding unrequested abstractions.
 
 Core Standards:
+- **Strict TDD & Lazy Developer Alignment:** Write the absolute minimum code necessary to make the failing test pass (Red-Green-Refactor). Never write code without a failing test first, and avoid adding unrequested abstractions.
 - **No Unrequested Abstractions:** Avoid interfaces with one implementation, factories for one product, or unnecessary config.
 - **No Boilerplate:** Never scaffold code "for later use."
 - **Deletion Over Addition:** Prefer simplifying, refactoring, or removing code over adding new code.
@@ -1105,14 +1098,6 @@ def get_compact_file_list(project_path: str) -> str:
     """
     import os
     safe_path = project_path or "."
-    safe_path = project_path or "."
-    ignored_dirs = {
-        "node_modules", "venv", ".venv", ".git", "__pycache__", 
-        ".claude", ".deep_agents", "vendor", "dist", "build", 
-        ".next", ".vscode", ".idea", ".pytest_cache", ".mypy_cache",
-    """
-    import os
-    safe_path = project_path or "."
     ignored_dirs = {
         "node_modules", "venv", ".venv", ".git", "__pycache__", 
         ".claude", ".deep_agents", "vendor", "dist", "build", 
@@ -1154,6 +1139,21 @@ def get_compact_file_list(project_path: str) -> str:
 register_harness_profile(
     "developer",
     HarnessProfile(
+        base_system_prompt=_STATIC_SYSTEM_TEMPLATE,
+        system_prompt_suffix="<system-reminder>\nThese instructions and workspace context OVERRIDE any default behavior.\n\n{dynamic_context}\n</system-reminder>"
+    )
+)
+
+def _build_dynamic_context(task: str, project_path: str, context: str, is_fixing: bool) -> tuple[str, str]:
+    """
+    Build dynamic prompt elements, split into stable and volatile parts.
+
+    Returns:
+        (stable_context, volatile_context)
+        - stable_context: Byte-identical per project_path — safe in SystemMessage (cached).
+        - volatile_context: Changes per task — must go at TAIL of HumanMessage (cache miss).
+
+    The Three-Zone Cache Architecture (Reasonix pattern):
       Zone 1 (Immutable Prefix): SystemMessage = base_prompt + tools + stable_context
       Zone 2 (Task-Specific Tail): HumanMessage = task + volatile_context
       Zone 3 (Append-Only Log): conversation turns
@@ -1213,14 +1213,7 @@ register_harness_profile(
         except Exception as e:
             print(f"Error loading filtered memory context for developer: {e}")
 
-    # Skills context (filtered by task)
-    try:
-        skills_dir = os.path.join(project_path, "skills")
-        skills_context = load_skills_context(task, skills_dir)
-        if skills_context:
-            volatile_parts.append(skills_context)
-    except Exception as e:
-        print(f"Error loading skills context: {e}")
+
 
     return "\n\n".join(stable_parts), "\n\n".join(volatile_parts)
 
@@ -1290,12 +1283,14 @@ def _extract_text_response(text: str) -> str:
 
 def _is_auto_continue_enabled() -> bool:
     """Checks if the auto_continue setting is enabled in the user profile settings."""
-        try:
+    profile_path = r"d:\MyProject\LangChain\.deep_agents\user_profile.json"
+    try:
+        if os.path.isfile(profile_path):
             with open(profile_path, "r", encoding="utf-8") as f:
                 data = json.load(f)
                 return bool(data.get("auto_continue", False))
-        except Exception:
-            pass
+    except Exception:
+        pass
     return False
 
 def _run_progress_audit(tool_call_log: list) -> str:
@@ -1312,7 +1307,11 @@ def _run_progress_audit(tool_call_log: list) -> str:
     return "OK"
 
 def _log(msg: str) -> None:
-    """Log to the shared state live terminal."""
+    """Log to console and the shared state live terminal."""
+    try:
+        print(msg, flush=True)
+    except Exception:
+        pass
     state = safe_get_state()
     if "live_terminal_log" in state:
         safe_update_state({"live_terminal_log": state["live_terminal_log"] + msg + "\n"})
@@ -1350,6 +1349,49 @@ def serialize_messages(messages: list) -> list[dict]:
     for m in messages:
         msg_dict = {"type": type(m).__name__, "content": m.content}
         if hasattr(m, "id") and m.id:
+            msg_dict["id"] = m.id
+        if hasattr(m, "name") and m.name:
+            msg_dict["name"] = m.name
+        if hasattr(m, "tool_calls") and m.tool_calls:
+            msg_dict["tool_calls"] = m.tool_calls
+        if hasattr(m, "additional_kwargs") and m.additional_kwargs:
+            msg_dict["additional_kwargs"] = m.additional_kwargs
+        serialized.append(msg_dict)
+    return serialized
+
+def deserialize_messages(serialized_msgs: list[dict]) -> list:
+    """Helper to deserialize messages back to LangChain message objects."""
+    messages = []
+    for msg_data in serialized_msgs:
+        m_type = msg_data.get("type")
+        content = msg_data.get("content", "")
+        m_id = msg_data.get("id")
+        name = msg_data.get("name")
+        kwargs = {}
+        if m_id:
+            kwargs["id"] = m_id
+        if name:
+            kwargs["name"] = name
+        add_kwargs = msg_data.get("additional_kwargs")
+        if add_kwargs:
+            kwargs["additional_kwargs"] = add_kwargs
+            
+        if m_type == "SystemMessage":
+            msg = SystemMessage(content=content, **kwargs)
+        elif m_type == "HumanMessage":
+            msg = HumanMessage(content=content, **kwargs)
+        elif m_type == "AIMessage":
+            tool_calls = msg_data.get("tool_calls")
+            if tool_calls:
+                kwargs["tool_calls"] = tool_calls
+            msg = AIMessage(content=content, **kwargs)
+        elif m_type == "RemoveMessage":
+            msg = RemoveMessage(**kwargs)
+        else:
+            msg = HumanMessage(content=content, **kwargs)
+        messages.append(msg)
+    return messages
+
 def developer_node(s: ITState) -> dict:
     """
     Tool-using Developer agent.
@@ -1383,33 +1425,7 @@ def developer_node(s: ITState) -> dict:
         try:
             import subprocess
             diff_res = subprocess.run(["git", "diff", "HEAD"], capture_output=True, text=True, cwd=project_path, timeout=5)
-            if diff_res.returncode == 0 and diff_res.stdout.strip():
-                git_diff = diff_res.stdout.strip()
-        except Exception as e:
-            print(f"[DEVELOPER] Error getting git diff: {e}")
-
-        if git_diff:
-            # Save to task.json artifacts
-            try:
-                task_data = load_task_tracking(project_path, chat_id)
-                if task_data:
-                    artifacts = task_data.setdefault("artifacts", {})
-                    artifacts["git_diff"] = git_diff
-                    save_task_tracking(task_data, project_path, chat_id)
-            except Exception as e:
-                print(f"[DEVELOPER] Error saving git diff to task tracking: {e}")
-
-            # Append to message history (Zone 3)
-            diff_msg_id = f"dev-git-diff-{uuid.uuid4()}"
-            diff_msg = SystemMessage(
-                content=f"[SYSTEM MEMORY INFO] The following git diff represents the final changes applied during this agent turn:\n\n```diff\n{git_diff}\n```",
-                id=diff_msg_id
-            )
-            # Add to res_dict["messages"] so it gets returned and stored in history
-            res_dict["messages"].append(diff_msg)
-
-        # Persist developer state to task.json on return so we can resume if we route back
-        try:
+            if diff_res.returncode == 0 and diff_res.stdout and diff_res.stdout.strip():
                 git_diff = diff_res.stdout.strip()
         except Exception as e:
             print(f"[DEVELOPER] Error getting git diff: {e}")
@@ -1450,21 +1466,13 @@ def developer_node(s: ITState) -> dict:
                     "artifacts": {
                         "files_created": [],
                         "files_modified": [],
-            print(f"[DEVELOPER] Error saving developer_state in make_return: {e}")
-
-        return res_dict
-
-    client_req = s.get("client_request", "")
-    tech_spec = s.get("tech_spec", "")
-    requirements = s.get("requirements", "")
-    test_report = s.get("test_report", "")
-    project_path = s.get("project_path", "") or r"d:\MyProject\LangChain"
-                if current_idx < len(steps_data):
-                    if steps_data[current_idx].get("status") == "completed":
-                        is_completed = True
+                    }
+                }
+            if task_data:
+                is_completed = False
                 if task_data.get("status") == "completed":
                     is_completed = True
-
+                
                 if not is_completed:
                     serialized_msgs = serialize_messages(messages)
                     task_data["developer_state"] = {
@@ -1487,6 +1495,7 @@ def developer_node(s: ITState) -> dict:
     tech_spec = s.get("tech_spec", "")
     requirements = s.get("requirements", "")
     test_report = s.get("test_report", "")
+    is_fixing = bool(test_report)
     project_path = s.get("project_path", "") or r"d:\MyProject\LangChain"
     err_count = s.get("error_count", 0)
     chat_id = s.get("chat_id", "")
@@ -1495,6 +1504,11 @@ def developer_node(s: ITState) -> dict:
     if err_count > 1:
         try:
             safe_update_state({"thoughts": {"developer": "Loop detected. Rolling back workspace to last stable commit..."}})
+            subprocess.run(["git", "reset", "--hard", "HEAD"], cwd=project_path, capture_output=True, timeout=10)
+            subprocess.run(["git", "clean", "-fd"], cwd=project_path, capture_output=True, timeout=10)
+        except Exception as e:
+            print(f"[DEVELOPER] Error doing loop-breaker git rollback: {e}")
+    spec_context = ""
     if tech_spec:
         spec_context = f"\n\n## Technical Specification\n{tech_spec[:3000]}\n\n## Requirements\n{requirements[:2000]}"
     if is_fixing and test_report:
@@ -1564,9 +1578,7 @@ def developer_node(s: ITState) -> dict:
                 # Mark this step as in_progress
                 steps_data[current_idx]["status"] = "in_progress"
                 save_task_tracking(task_data, project_path, chat_id)
-                    f"You are working on: {steps_data[current_idx]['description']}\n\n"
-                    "Progress:\n" + "\n".join(completed_descs + pending_descs)
-                )
+                task_step_info = "\n" + build_task_progress_block(task_data) + "\n"
     except Exception as e:
         print(f"[DEVELOPER] Error loading task context: {e}")
     # ── END ──
@@ -1580,25 +1592,6 @@ def developer_node(s: ITState) -> dict:
                    "web_fetch", "browser_navigate", "browser_extract",
                    "browser_screenshot", "browser_close"]
 
-    # Single safety cap — agent should finish naturally in 5-15 turns.
-    max_iters = 50
-
-    # ── Load developer state if resuming from suspension ──
-    developer_state = None
-                   "browser_screenshot", "browser_close"]
-
-    # Single safety cap — agent should finish naturally in 5-15 turns.
-    max_iters = 50
-
-    is_exploration = False
-
-    valid_tools = ["read_file", "view_signatures", "write_file", "edit_file", "run_command",
-                   "search_code", "list_files", "write_planning_file", "compact_conversation",
-                   "read_conversation_history", "search_codebase", "search_past_conversations",
-                   "web_fetch", "browser_navigate", "browser_extract",
-                   "browser_screenshot", "browser_close"]
-
-    # Single safety cap — agent should finish naturally in 5-15 turns.
     max_iters = 50
 
     # ── Load developer state if resuming from suspension ──
@@ -1613,14 +1606,19 @@ def developer_node(s: ITState) -> dict:
     except Exception as e:
         print(f"[DEVELOPER] Error checking resume state: {e}")
 
+    # Build system prompt parts
+    is_fixing = bool(test_report)
+    task_message = task
     static_system, volatile_context = _build_system_prompt(
+        task_message, project_path, context, valid_tools, is_first_call=(developer_state is None), is_fixing=is_fixing
+    )
+
+    task_human_content = task_message
+    if volatile_context:
+        task_human_content += f"\n\n{volatile_context}"
+
+    if developer_state:
         _log(f"[DEVELOPER] 🔄 Resuming from suspended execution state (iteration {developer_state['iteration']})...")
-        # Deserialize messages — prefer developer_state since Graph State is pruned by RemoveMessage
-        if developer_state.get("messages"):
-            messages = deserialize_messages(developer_state["messages"])
-        elif hasattr(s, "get") and s.get("messages") and len(s.get("messages")) > 0:
-        _log(f"[DEVELOPER] 🔄 Resuming from suspended execution state (iteration {developer_state['iteration']})...")
-        # Deserialize messages — prefer developer_state since Graph State is pruned by RemoveMessage
         if developer_state.get("messages"):
             messages = deserialize_messages(developer_state["messages"])
         elif hasattr(s, "get") and s.get("messages") and len(s.get("messages")) > 0:
@@ -1628,6 +1626,13 @@ def developer_node(s: ITState) -> dict:
             _log(f"[DEVELOPER] Loaded {len(messages)} messages natively from Graph State.")
         else:
             messages = []
+
+        # Update SystemMessage and first HumanMessage in history to avoid stale rules/project tree on resume
+        if len(messages) >= 2:
+            if isinstance(messages[0], SystemMessage):
+                messages[0] = SystemMessage(content=static_system)
+            if isinstance(messages[1], HumanMessage):
+                messages[1] = HumanMessage(content=task_human_content)
 
         # Check if we are resuming from suspension vs starting a new repair/implement cycle
         resume_words = {"continue", "resume", "proceed", "go"}
@@ -1643,7 +1648,7 @@ def developer_node(s: ITState) -> dict:
             consecutive_read_turns = 0
             voluntary_compact_requested = False
             # Append the new task traceback / client request as a human message to the end of history
-            messages.append(HumanMessage(content=task_message))
+            messages.append(HumanMessage(content=task_human_content))
             _log("[DEVELOPER] 🔄 Starting a new repair/implement cycle. Reset iteration budget and appended the new task description.")
 
         tool_call_log = developer_state["tool_call_log"]
@@ -1678,7 +1683,7 @@ def developer_node(s: ITState) -> dict:
         # Zone 1 + Zone 2: SystemMessage (cached) + task+volatile (cache break)
         messages = [
             SystemMessage(content=static_system),
-            HumanMessage(content=task_message),
+            HumanMessage(content=task_human_content),
         ]
         iteration = 0
         tool_call_log = []
@@ -1702,29 +1707,6 @@ def developer_node(s: ITState) -> dict:
         _log(f"\n[DEV Iteration {iteration}/{max_iters}]")
 
         # Invalidate stale read results to prevent temporal paradoxes
-        messages = invalidate_stale_reads(messages)
-
-        # Decrement remaining_steps in shared_state to reflect the progress of the loop
-        state_snap = safe_get_state()
-        rem_steps = (state_snap.get("remaining_steps") or 50) - 1
-        safe_update_state({"remaining_steps": rem_steps})
-        if rem_steps <= 0:
-            _log("[DEVELOPER] ⚠️ Out of remaining steps budget — forcing exit.")
-            break
-
-        # ── Auto-compact: Claude Code style context management ──
-        # When context grows too large, apply 3-Tier compaction strategy based on token budget
-
-        # Three-zone: history starts at index 2 (after SystemMessage + Task HumanMessage)
-        # Three-zone: history starts at index 2 (after SystemMessage + Task HumanMessage)
-        system_tokens = estimate_tokens(messages[0].content) if len(messages) > 0 else 0
-        dynamic_tokens = estimate_tokens(messages[1].content) if len(messages) > 1 else 0
-        history_tokens = 0
-        for m in messages[2:]:
-            if hasattr(m, "content") and m.content:
-                history_tokens += estimate_tokens(m.content)
-        total_tokens = system_tokens + dynamic_tokens + history_tokens
-
         messages = invalidate_stale_reads(messages)
 
         # Decrement remaining_steps in shared_state to reflect the progress of the loop
@@ -1785,10 +1767,10 @@ def developer_node(s: ITState) -> dict:
                 )
                 _log(f"[DEVELOPER] Compacted history → {len(messages)} remain")
         elif total_tokens > 350000:
-        # ── Metacognitive Progress Audit ──
-        # Check every 3 iterations starting at iteration 4 whether we are progressing.
-        # Catches read-only spirals, indecisive exploration loops, and same-tool repetition.
-        if iteration > 3 and iteration % 3 == 1:
+            _log(f"[DEVELOPER] Auto-compact check: Tier 2 trigger (total_tokens={total_tokens} > 350K). Condensing intermediate tool results.")
+            if len(messages) > keep_n + 2:
+                messages = tier2_compact(messages, keep_last_n=keep_n)
+                _log(f"[DEVELOPER] Compacted history → {len(messages)} remain")
         elif total_tokens > 200000:
             _log(f"[DEVELOPER] Auto-compact check: Tier 1 trigger (total_tokens={total_tokens} > 200K). Compressing actions and deduplicating reads.")
             if len(messages) > keep_n + 2:
@@ -1869,6 +1851,11 @@ def developer_node(s: ITState) -> dict:
                 # ── Native Function Calling ──
                 # Pass tool schemas via the API tools parameter so the model
                 # returns structured tool_calls instead of text we must parse.
+                llm_result = invoke_messages_with_fallback(
+                    role="Developer",
+                    messages=run_messages,
+                    tools=get_native_tools(),
+                    where=where_tag,
                 )
 
                 # Unpack new (text, tool_calls, reasoning) tuple or legacy string
@@ -1889,21 +1876,6 @@ def developer_node(s: ITState) -> dict:
                         set_cached_code(task, response_text)
                     except Exception:
                         pass
-            except Exception as e:
-                _log(f"[DEVELOPER] LLM error after all fallbacks: {e}")
-                # Return partial state so supervisor can decide
-                safe_update_state({"thoughts": {"developer": f"LLM error: {e}"}})
-                return make_return({
-                    "code": f"// ERROR: All LLM providers failed: {e}",
-                    "test_report": f"STATUS: FAIL\nDeveloper LLM error: {e}",
-                    "project_path": project_path,
-                    "code_updated": False,
-                    "tech_spec_updated": False,
-                    response_text = llm_result
-                    native_tool_calls = []
-                    reasoning_content = None
-
-
             except Exception as e:
                 _log(f"[DEVELOPER] LLM error after all fallbacks: {e}")
                 # Return partial state so supervisor can decide
@@ -1937,409 +1909,33 @@ def developer_node(s: ITState) -> dict:
         last_response_text = response_text
         _log(f"[DEVELOPER] Response ({len(response_text)} chars)")
 
+        # Log native reasoning_content if present
+        if reasoning_content:
+            _log(f"🧠 Developer: {reasoning_content.strip()}")
+
         # Extract and log thinking block if present
         thinking_match = re.search(r"<thinking>(.*?)</thinking>", response_text, flags=re.DOTALL)
-                tool_name = tool_call.get("tool", "")
-                tool_args = tool_call.get("args", {})
+        if thinking_match:
+            thinking_content = thinking_match.group(1).strip()
+            _log(f"🧠 Developer: {thinking_content}")
 
-                if tool_name not in valid_tools:
-                    _log(f"[DEVELOPER] Unknown tool requested: {tool_name} — asking LLM to retry")
-                    tool_result = f"TOOL ERROR: Unknown tool: {tool_name}. Available tools: {', '.join(valid_tools)}"
-                    tool_outputs.append(f"[{tool_name}]:\n{tool_result}")
-                    continue
-
-                # Track write/edit/run for progress detection
-                if tool_name in ("write_file", "edit_file", "apply_diff", "run_command"):
-                    this_turn_has_write = True
-
-                # ── LoopGuard Pre-Execution Check ──
-                guard_result = LoopGuard.check_pre_execute(tool_call_log, tool_name, tool_args)
-                warning_msg = None
-                if guard_result:
-                    guard_type, guard_msg = guard_result
-                    if guard_type == "STALE":
-                        tool_result = f"[STALE] {guard_msg}"
-                        tool_call_log.append({
-                            "iteration": iteration,
-                            "tool": tool_name,
-                            "args": tool_args,
-                            "result_preview": "[STALE] skipped",
-                        })
-                        tool_outputs.append(f"[{tool_name}]:\n{tool_result}")
-                        continue
-                    elif guard_type == "ABORT":
-                        _log(f"[DEVELOPER] ⚠️ Loop detected for tool {tool_name} — aborting loop.")
-                        clean_response = f"ERROR: {guard_msg}"
-
-                # ── Stale-Read Detection ──
-                # If the agent is re-reading the same file+offset a 3rd+ time,
-                # return [STALE] to break re-read spirals (saves tokens + loops).
-                # The count resets if the file was successfully modified in between.
-                if tool_name == "read_file":
-                    target_file = tool_args.get("file_path", "")
-                    read_key = (target_file, tool_args.get("offset"), tool_args.get("limit"))
-                    
-                    same_reads = 0
-                    for item in reversed(tool_call_log[-20:]):
-                        # Reset check if there was a successful write/edit on the same file
-                        if item.get("tool") in ("write_file", "edit_file") and item.get("args", {}).get("file_path") == target_file:
-                            res_preview = str(item.get("result_preview", ""))
-                            if not res_preview.startswith("Error") and not res_preview.startswith("TOOL ERROR"):
-                                break
-                        if item.get("tool") == "read_file":
-                            item_key = (item.get("args", {}).get("file_path"), item.get("args", {}).get("offset"), item.get("args", {}).get("limit"))
-                            if item_key == read_key:
-                                same_reads += 1
-
-                    if same_reads >= 2:  # This is the 3rd+ time
-                        tool_result = (
-                            f"[STALE] This file was already read {same_reads + 1} times with the same parameters. "
-                            f"Content has NOT changed. Do NOT re-read this file — use the previous output. "
-                            f"If you need different content, change offset/limit or read a different file."
-                        )
-                        tool_call_log.append({
-                            "iteration": iteration,
-                            "tool": tool_name,
-                            "args": tool_args,
-                            "result_preview": "[STALE] skipped",
-                        })
-                        tool_outputs.append(f"[{tool_name}]:\n{tool_result}")
-                        continue
-
-                # ── Format tool log line: concise, shows file + detail ──
-                fpath = tool_args.get("file_path", tool_args.get("path", ""))
-                fname = os.path.basename(fpath) if fpath else ""
-                # Detect line range from read_file args
-                read_offset = tool_args.get("offset", 0)
-                read_limit = tool_args.get("limit", None)
-
-                if tool_name == "read_file":
-                    tool_label = f"read {fname or fpath}"
-                    if read_offset:
-                        tool_label += f" @{read_offset}"
-                    if read_limit:
-                        tool_label += f"+{read_limit}"
-                elif tool_name == "write_file":
-                    content_len = len(str(tool_args.get("content", "")))
-                    tool_label = f"write {fname or fpath} ({content_len}B)"
-                elif tool_name == "edit_file":
-                    tool_label = f"edit {fname or fpath}"
-                elif tool_name == "run_command":
-                    cmd = str(tool_args.get("command", ""))[:70]
-                    tool_label = f"run {cmd}"
-                elif tool_name == "search_code":
-                    pat = str(tool_args.get("pattern", ""))[:60]
-                    tool_label = f"search \"{pat}\""
-                elif tool_name == "list_files":
-                    lp = str(tool_args.get("path", "."))[:50]
-                    tool_label = f"ls {lp}"
-                elif tool_name == "task":
-                    tool_label = f"delegate {str(tool_args.get('name', ''))[:40]}"
-                elif tool_name == "start_async_task":
-                    tool_label = f"async {str(tool_args.get('name', ''))[:40]}"
-                else:
-                    tool_label = f"{tool_name}"
-
-                safe_update_state({"thoughts": {"developer": f"Using {tool_name}..."}})
-                _log(f"[DEVELOPER] {tool_label}")
-
-                try:
-                    tool_result = execute_tool(tool_name, tool_args)
-                except Exception as e:
-                    tool_result = f"Tool execution error: {e}"
-
-                # ── Build detail string for the where_tag (shown in next LLM invocation) ──
-                tool_detail = ""
-
-                # Enrich read_file with actual line range from result
-                if tool_name == "read_file" and not str(tool_result).startswith("[STALE]"):
-                    lines_match = re.search(r'lines (\d+)-(\d+) of (\d+)', str(tool_result)[:200])
-                    if lines_match:
-                        r_start, r_end, r_total = lines_match.group(1), lines_match.group(2), lines_match.group(3)
-                        tool_detail = f"#{r_start}-{r_end}/{r_total}"
-                        _log(f"[DEVELOPER]   => {fname or fpath} {tool_detail}")
-
-                # Enrich edit_file with diff stats
-                if tool_name == "edit_file" and not str(tool_result).startswith("Error"):
-                    added = len(re.findall(r'^\+[^+]', str(tool_result)[:2000], re.MULTILINE))
-                    removed = len(re.findall(r'^\-[^-]', str(tool_result)[:2000], re.MULTILINE))
-                    if added or removed:
-                        tool_detail = f"+{added} -{removed}"
-                        _log(f"[DEVELOPER]   => {fname or fpath} {tool_detail}")
-
-                tool_call_log.append({
-                    "iteration": iteration,
-                    "tool": tool_name,
-                    "args": tool_args,
-                    "result_preview": str(tool_result)[:200],
-                    "detail": tool_detail,  # for where_tag enrichment
-                })
-
-                # Check for Sleep-and-Resume suspension trigger
-                if tool_name == "run_command" and tool_args.get("background") is True and "[OK] Started background process" in str(tool_result):
-                    if os.environ.get("DEEP_AGENTS_EVAL_RUN") == "1":
-                        _log(f"[DEVELOPER] 💤 Background task started in evaluation mode. Sleeping 5 seconds for boot instead of suspending...")
-                        time.sleep(5)
-                    else:
-                        _log(f"[DEVELOPER] 💤 Background task started. Suspending graph and starting automatic wake-up thread...")
-                        
-                        # Extract process name
-                        process_name = tool_args.get("command", "").split()[0]
-                        
-                        def _wakeup_trigger():
-                            # Sleep 15 seconds to let the server boot up
-                            time.sleep(15)
-                            try:
-                                # Call /api/run to resume
-                                url = "http://127.0.0.1:8000/api/run"
-                                payload = {
-                                    "prompt": "continue",
-                                    "workspace_path": project_path,
-                                    "chat_id": chat_id
-                                }
-                                requests.post(url, json=payload, timeout=5)
-                                print("[WAKEUP] Wake-up request sent to API server.")
-                            except Exception as ex:
-                                print(f"[WAKEUP] Error sending wake-up request: {ex}")
-                                
-                        threading.Thread(target=_wakeup_trigger, daemon=True).start()
-                        
-                        # Save developer state to task.json
-                        try:
-                            task_data = load_task_tracking(project_path, chat_id)
-                            if task_data:
-                                serialized_msgs = serialize_messages(messages)
-                                
-                                task_data["developer_state"] = {
-                                    "messages": serialized_msgs,
-                                    "iteration": iteration,
-                                    "tool_call_log": tool_call_log,
-                                    "step_tool_calls": step_tool_calls,
-                                    "tracked_files_created": tracked_files_created,
-                                    "tracked_files_modified": tracked_files_modified,
-                                    "last_response_text": last_response_text,
-                                    "consecutive_read_turns": consecutive_read_turns,
-                                    "voluntary_compact_requested": voluntary_compact_requested,
-                                }
-                                save_task_tracking(task_data, project_path, chat_id)
-                        except Exception as e:
-                            print(f"[DEVELOPER] Error saving developer state: {e}")
-                        
-                        return make_return({
-                            "code": f"// SUSPENDED: Waiting for background process '{process_name}'...",
-                            "agent_report": f"SUSPENDED: Waiting for background process '{process_name}' to boot. Will resume automatically.",
-                            "test_report": "",
-                            "project_path": project_path,
-                            "code_updated": False,
-                            "tech_spec_updated": False,
-                            "next_agent": "suspended",
-                        })
-
-                if warning_msg:
-                    tool_result = str(tool_result) + warning_msg
-
-                if tool_name == "compact_conversation":
-                    voluntary_compact_requested = True
-
-                # Track artifacts for task.json
-                step_tool_calls += 1
-                if tool_name in ("write_file", "write_planning_file"):
-                    fpath = tool_args.get("file_path", "")
-                    if fpath and fpath not in tracked_files_created:
-                        tracked_files_created.append(fpath)
-                elif tool_name == "edit_file":
-                    fpath = tool_args.get("file_path", "")
-                    if fpath and fpath not in tracked_files_modified:
-                            "thoughts": {"developer": "Execution failed due to blocking loop."},
-                            "outputs": {
-                                "code": f"// ERROR: {clean_response[:1000]}",
-                                "agent_report": clean_response
-                            }
-                        })
-                        
-                        # Store log
-                        try:
-                            safe_update_state({"developer_tool_log": json.dumps(tool_call_log, indent=2)})
-                        except Exception:
-                            safe_update_state({"developer_tool_log": str(tool_call_log)})
-                            
-                        # Update task.json
-                        try:
-                            task_tracking_data = load_task_tracking(project_path, chat_id)
-                            if task_tracking_data and task_tracking_data.get("steps"):
-                                steps_data = task_tracking_data["steps"]
-                                current_idx = task_tracking_data.get("current_step", 0)
-                                if current_idx < len(steps_data):
-                                    steps_data[current_idx]["status"] = "failed"
-                                    steps_data[current_idx]["notes"] = clean_response[:200]
-                                    steps_data[current_idx]["tool_calls"] = step_tool_calls
-                                    save_task_tracking(task_tracking_data, project_path, chat_id)
-                        except Exception as e:
-                            print(f"[DEVELOPER] Error saving task progress: {e}")
-                            
-                        return make_return({
-                            "code": f"// ERROR: {clean_response[:1000]}",
-                            "agent_report": clean_response,
-                            "test_report": f"STATUS: FAIL\nDeveloper stuck in loop: {clean_response[:300]}",
-                            "project_path": project_path,
-                            "code_updated": True,
-                            "tech_spec_updated": False,
-                        })
-                    else:
-                        if is_read_tool:
-                            warning_msg = (
-                                f"\n\n[WARNING] You have executed the read tool '{tool_name}' with these exact arguments {same_count + 1} times. "
-                                "If you are not finding what you need, please change your search query, read a different file, "
-                                "check if the information is already in your system/project prompt, or proceed with writing the plan/report."
-                            )
-                        else:
-                            warning_msg = (
-                                f"\n\n[WARNING] You have executed the tool '{tool_name}' with these exact arguments {same_count + 1} times. "
-                                "If this command is repeatedly failing or yielding the same result, you are likely stuck in a loop. "
-                                "Please change your approach, try a different command, or if this is a blocking issue requiring user "
-                                "intervention (like system configuration or version mismatch), stop and output an 'ERROR: <description>' response."
-                            )
-                        tool_result = str(tool_result) + warning_msg
-
-                # Track artifacts for task.json
-                step_tool_calls += 1
-                if tool_name in ("write_file", "write_planning_file"):
-                    fpath = tool_args.get("file_path", "")
-                    if fpath and fpath not in tracked_files_created:
-                        tracked_files_created.append(fpath)
-                elif tool_name == "edit_file":
-                    fpath = tool_args.get("file_path", "")
-                    if fpath and fpath not in tracked_files_modified:
-                        tracked_files_modified.append(fpath)
-
-                # Format output for this tool
-                tool_outputs.append(f"[{tool_name}]:\n{tool_result}")
-
-                # ── Early-stop on verified test success ──
-                if tool_name == "run_command" and "[OK] Exit 0" in str(tool_result):
-                    result_lower = str(tool_result).lower()
-                    if "passed" in result_lower or "ok" in result_lower:
-                        if any(kw in result_lower for kw in ["test", "pytest", "unittest", "assert"]):
-                            if tracked_files_created or tracked_files_modified:
-                                any_early_stop = True
-
-            # If early stop was triggered during execution of the tools
-            if any_early_stop:
-                            steps_data[current_idx]["notes"] = "Tests verified passing."
-                            steps_data[current_idx]["status"] = "completed"
-                            steps_data[current_idx]["completed_at"] = datetime.now().isoformat()
-                            
-                            # Step-level context isolation: clear developer_state on step completion
-                            if "developer_state" in task_data:
-                                save_task_tracking({k:v for k,v in task_data.items() if k != "developer_state"}, project_path, chat_id)
-                                del task_data["developer_state"]
-
-                            artifacts = task_data.setdefault("artifacts", {})
-                            if tracked_files_created:
-                                existing = set(artifacts.get("files_created", []))
-                                existing.update(tracked_files_created)
-                                artifacts["files_created"] = list(existing)
-                            if tracked_files_modified:
-                                existing = set(artifacts.get("files_modified", []))
-                                existing.update(tracked_files_modified)
-                                artifacts["files_modified"] = list(existing)
-                            
-            else:
-                combined_tool_result = "\n\n".join(tool_outputs)
-
-            # ── Cost Awareness ──
-            # Show cost in context so the agent self-regulates
-            from state_sync import safe_get_state
-            cost_state = safe_get_state()
-            tu = cost_state.get("token_usage", {})
-            spent = tu.get("total_cost", 0)
-            n_calls = len(tu.get("calls", []))
-            if spent > 0:
-                cost_line = f"\n\n[COST: ${spent:.4f} spent across {n_calls} LLM calls. Be efficient.]"
-                combined_tool_result += cost_line
-
-            # Truncate response_text after the first tool block to prevent LLM from reading its own future hallucinations
-            # Let's find the very last closing ``` of the tool blocks
-                    "tech_spec_updated": False,
-                })
-
-            # ── Progress Gate: prevent read-only death spirals ──
-            # Track consecutive turns with zero writes/edits/commands.
-            # After 6 read-only turns: nudge. After 10: hard stop.
-            is_read_only_turn = not this_turn_has_write
-            _consecutive_read_turns = consecutive_read_turns
-
-                return make_return({
-                    "code": "Code successfully implemented and tests verified.",
-                    "agent_report": f"Implementation complete. Tests passed after {iteration} iterations.",
-                    "test_report": "",
-                    "project_path": project_path,
-                    "code_updated": True,
-                    "tech_spec_updated": False,
-                })
-
-            # ── Progress Gate: prevent read-only death spirals ──
-            # Track consecutive turns with zero writes/edits/commands.
-            # After 6 read-only turns: nudge. After 10: hard stop.
-            is_read_only_turn = not this_turn_has_write
-            _consecutive_read_turns = consecutive_read_turns
-            if is_read_only_turn:
-                _consecutive_read_turns += 1
-            else:
-                _consecutive_read_turns = 0
-            consecutive_read_turns = _consecutive_read_turns
-
-            if _consecutive_read_turns == 6:
-                combined_tool_result = "\n\n".join(tool_outputs)
-                combined_tool_result += (
-                    "\n\n[PROGRESS GATE] You have spent 6 turns investigating without making any changes. "
-                    "You MUST now either: (a) write_file or edit_file to make progress, "
-                    "or (b) output your completion report if the task is done. "
-                    "Do NOT call read_file or search_code again without a write in between."
-                )
-            elif _consecutive_read_turns >= 10:
-                combined_tool_result = "\n\n".join(tool_outputs)
-                combined_tool_result += (
-                    "\n\n[HARD STOP] 10 consecutive investigation turns with zero changes. "
-                    "You are out of investigation budget. You MUST stop investigating. "
-                    "Either write your completion report NOW (no tools), or call write_file/edit_file immediately."
-                )
-            else:
-                combined_tool_result = "\n\n".join(tool_outputs)
-
-            # ── Cost Awareness ──
-            # Show cost in context so the agent self-regulates
-            from state_sync import safe_get_state
-            cost_state = safe_get_state()
-            tu = cost_state.get("token_usage", {})
-            spent = tu.get("total_cost", 0)
-            n_calls = len(tu.get("calls", []))
-            if spent > 0:
-                cost_line = f"\n\n[COST: ${spent:.4f} spent across {n_calls} LLM calls. Be efficient.]"
-                combined_tool_result += cost_line
-
-            # Truncate response_text after the first tool block to prevent LLM from reading its own future hallucinations
-            # Let's find the very last closing ``` of the tool blocks
-            last_tool_idx = response_text.rfind("```")
-            if last_tool_idx != -1:
-                response_text = response_text[:last_tool_idx + 3]
-
-            # ── #4: Strip thinking blocks before saving to history (saves ~300 tokens/iter) ──
-            history_text = re.sub(r'<thinking>.*?</thinking>', '', response_text, flags=re.DOTALL).strip()
-            ai_msg_id = f"dev-ai-{iteration}-{uuid.uuid4()}"
-            human_msg_id = f"dev-human-{iteration}-{uuid.uuid4()}"
-            additional_kwargs = {}
-            if reasoning_content:
-                additional_kwargs["reasoning_content"] = reasoning_content
-            messages.append(AIMessage(content=history_text, id=ai_msg_id, additional_kwargs=additional_kwargs))
-            messages.append(HumanMessage(content=combined_tool_result, id=human_msg_id))
-            appended_ids.extend([ai_msg_id, human_msg_id])
-
-            # Update shared state with progress
-            last_tool_name = tool_calls[-1].get("tool", "")
-            safe_update_state({"outputs": {"code": f"// Developer iteration {iteration}: {last_tool_name} completed"}})
-
+        # Extract all tool calls (mix native and text parsed)
+        tool_calls = []
+        if native_tool_calls:
+            for tc in native_tool_calls:
+                tname = tc.get("tool") or tc.get("name")
+                targs = tc.get("args") or {}
+                if isinstance(targs, str):
+                    try:
+                        targs = json.loads(targs)
+                    except Exception:
+                        pass
+                if tname:
+                    tool_calls.append({"tool": tname, "args": targs})
         else:
+            tool_calls = parse_all_tool_calls(response_text)
+
+        if not tool_calls:
             # No tool call — agent is done
             _log(f"[DEVELOPER] No tool call parsed from response (len={len(response_text)}). Preview: {repr(response_text[:300])}")
             planning_file = os.path.join(project_path or "d:/MyProject/LangChain", "planning.md")
@@ -2350,8 +1946,6 @@ def developer_node(s: ITState) -> dict:
             )
             # Note: is_plan_req is always False (no mode detection). Plan nudging removed.
 
-            #   3. Structured diagnosis, not raw traceback.
-            #   4. Max 2 rounds, with convergence check + git rollback.
             # ═══════════════════════════════════════════════════════════════════════
             # reflexion_retries is a local variable
             if tracked_files_created or tracked_files_modified:
@@ -2411,25 +2005,10 @@ def developer_node(s: ITState) -> dict:
                     else:
                         # ── Stage 3: LLM Critic ──
                         reflexion_retries += 1
-                        _log(f"[REFLEXION] ❌ Tests FAILED → Stage 3 Critic "
-                             f"(round {reflexion_retries}/2)")
+                        _log(f"[REFLEXION] ❌ Tests FAILED → Stage 3 Critic (round {reflexion_retries}/2)")
 
                         # Build Stage 2 findings string for the critic
                         s2_findings = ""
-                        s2_summary = "Stage 2 not run (module unavailable)."
-                        if stage2_result is not None:
-                            s2_findings = format_findings_for_developer(
-                                stage2_result.findings
-                            ) if stage2_result.findings else ""
-                            s2_summary = stage2_result.summary
-
-                        try:
-                            diagnosis = invoke_critic(
-                                project_path=project_path,
-                                tracked_files=all_tracked,
-                                test_output=str(test_result),
-                                stage2_summary=s2_summary,
-                                stage2_findings=s2_findings,
                         s2_summary = "Stage 2 not run (module unavailable)."
                         if stage2_result is not None:
                             s2_findings = format_findings_for_developer(
@@ -2495,7 +2074,7 @@ def developer_node(s: ITState) -> dict:
 
             clean_response = _extract_text_response(response_text)
             _log(f"\n[DEVELOPER] ✅ Agent finished after {iteration} iterations")
-            _log(f"[DEVELOPER] Summary: {clean_response[:500]}")
+            _log(f"🤖 Assistant: {clean_response}")
 
             is_error = clean_response.strip().upper().startswith("ERROR:") or clean_response.strip().upper().startswith("FAILED:")
 
@@ -2549,6 +2128,14 @@ def developer_node(s: ITState) -> dict:
                 appended_ids.extend([ai_msg_id, human_msg_id])
                 continue  # Re-enter the loop with the nudge
             elif no_tools_called and no_files_created and looks_like_description:
+                _log("[DEVELOPER] ❌ Agent persistently described instead of doing — aborting with error")
+                is_error = True
+                clean_response = "ERROR: Agent described the solution instead of executing. No tools were called."
+
+            try:
+                tool_log_val = json.dumps(tool_call_log, indent=2)
+            except Exception:
+                tool_log_val = str(tool_call_log)
 
             safe_update_state({
                 "thoughts": {"developer": "Execution failed due to blocking error: " + clean_response[:100] if is_error else "Implementation complete."},
@@ -2599,20 +2186,6 @@ def developer_node(s: ITState) -> dict:
                             else:
                                 task_tracking_data["status"] = "completed"
                         save_task_tracking(task_tracking_data, project_path, chat_id)
-            except Exception as e:
-                print(f"[DEVELOPER] Error updating task tracking: {e}")
-            # ── END ──
-
-            # ── Pillar 63/75/96: Local code quality check on all tracked files ──
-            lint_summary_parts: list[str] = []
-                        if not is_error:
-                            next_step = current_idx + 1
-                            if next_step < len(steps_data):
-                                task["current_step"] = next_step
-                                steps_data[next_step]["status"] = "in_progress"
-                            else:
-                                task["status"] = "completed"
-                        save_task_tracking(task, project_path, chat_id)
             except Exception as e:
                 print(f"[DEVELOPER] Error updating task tracking: {e}")
             # ── END ──
@@ -2671,6 +2244,433 @@ def developer_node(s: ITState) -> dict:
                     "tech_spec_updated": False,
                 })
 
+        tool_outputs = []
+        this_turn_has_write = False
+        any_early_stop = False
+
+        for tool_call in tool_calls:
+            tool_name = tool_call.get("tool", "")
+            tool_args = tool_call.get("args", {})
+            if not tool_args or not isinstance(tool_args, dict):
+                tool_args = {k: v for k, v in tool_call.items() if k not in ("tool", "args")}
+
+            if tool_name not in valid_tools:
+                _log(f"[DEVELOPER] Unknown tool requested: {tool_name} — asking LLM to retry")
+                tool_result = f"TOOL ERROR: Unknown tool: {tool_name}. Available tools: {', '.join(valid_tools)}"
+                tool_outputs.append(f"[{tool_name}]:\n{tool_result}")
+                continue
+
+            # Track write/edit/run for progress detection
+            if tool_name in ("write_file", "edit_file", "apply_diff", "run_command"):
+                this_turn_has_write = True
+
+            # ── LoopGuard Pre-Execution Check ──
+            guard_result = LoopGuard.check_pre_execute(tool_call_log, tool_name, tool_args)
+            warning_msg = None
+            if guard_result:
+                guard_type, guard_msg = guard_result
+                if guard_type == "STALE":
+                    tool_result = f"[STALE] {guard_msg}"
+                    tool_call_log.append({
+                        "iteration": iteration,
+                        "tool": tool_name,
+                        "args": tool_args,
+                        "result_preview": "[STALE] skipped",
+                    })
+                    tool_outputs.append(f"[{tool_name}]:\n{tool_result}")
+                    continue
+                elif guard_type == "ABORT":
+                    _log(f"[DEVELOPER] ⚠️ Loop detected for tool {tool_name} — aborting loop.")
+                    clean_response = f"ERROR: {guard_msg}"
+                    safe_update_state({
+                        "thoughts": {"developer": "Execution failed due to blocking loop."},
+                        "outputs": {
+                            "code": f"// ERROR: {clean_response[:1000]}",
+                            "agent_report": clean_response
+                        }
+                    })
+                    try:
+                        safe_update_state({"developer_tool_log": json.dumps(tool_call_log, indent=2)})
+                    except Exception:
+                        safe_update_state({"developer_tool_log": str(tool_call_log)})
+                    try:
+                        task_tracking_data = load_task_tracking(project_path, chat_id)
+                        if task_tracking_data and task_tracking_data.get("steps"):
+                            steps_data = task_tracking_data["steps"]
+                            current_idx = task_tracking_data.get("current_step", 0)
+                            if current_idx < len(steps_data):
+                                steps_data[current_idx]["status"] = "failed"
+                                steps_data[current_idx]["notes"] = clean_response[:200]
+                                steps_data[current_idx]["tool_calls"] = step_tool_calls
+                                save_task_tracking(task_tracking_data, project_path, chat_id)
+                    except Exception as e:
+                        print(f"[DEVELOPER] Error saving task progress: {e}")
+                    return make_return({
+                        "code": f"// ERROR: {clean_response[:1000]}",
+                        "agent_report": clean_response,
+                        "test_report": f"STATUS: FAIL\nDeveloper stuck in loop: {clean_response[:300]}",
+                        "project_path": project_path,
+                        "code_updated": True,
+                        "tech_spec_updated": False,
+                    })
+
+            # ── Same-Count warning/abort check ──
+            same_count = count_identical_calls_since_state_change(tool_call_log, tool_name, tool_args)
+            if same_count >= 2:
+                is_read_tool = tool_name in ("read_file", "search_code", "list_files", "search_codebase", "view_signatures")
+                if same_count >= 5:
+                    _log(f"[DEVELOPER] ⚠️ Loop detected for tool {tool_name} (called {same_count} times) — aborting loop.")
+                    clean_response = f"ERROR: Loop detected. Called tool {tool_name} with same arguments {same_count} times without state change."
+                    safe_update_state({
+                        "thoughts": {"developer": "Execution failed due to blocking loop."},
+                        "outputs": {
+                            "code": f"// ERROR: {clean_response[:1000]}",
+                            "agent_report": clean_response
+                        }
+                    })
+                    try:
+                        safe_update_state({"developer_tool_log": json.dumps(tool_call_log, indent=2)})
+                    except Exception:
+                        safe_update_state({"developer_tool_log": str(tool_call_log)})
+                    try:
+                        task_tracking_data = load_task_tracking(project_path, chat_id)
+                        if task_tracking_data and task_tracking_data.get("steps"):
+                            steps_data = task_tracking_data["steps"]
+                            current_idx = task_tracking_data.get("current_step", 0)
+                            if current_idx < len(steps_data):
+                                steps_data[current_idx]["status"] = "failed"
+                                steps_data[current_idx]["notes"] = clean_response[:200]
+                                steps_data[current_idx]["tool_calls"] = step_tool_calls
+                                save_task_tracking(task_tracking_data, project_path, chat_id)
+                    except Exception as e:
+                        print(f"[DEVELOPER] Error saving task progress: {e}")
+                    return make_return({
+                        "code": f"// ERROR: {clean_response[:1000]}",
+                        "agent_report": clean_response,
+                        "test_report": f"STATUS: FAIL\nDeveloper stuck in loop: {clean_response[:300]}",
+                        "project_path": project_path,
+                        "code_updated": True,
+                        "tech_spec_updated": False,
+                    })
+                else:
+                    if is_read_tool:
+                        warning_msg = (
+                            f"\n\n[WARNING] You have executed the read tool '{tool_name}' with these exact arguments {same_count + 1} times. "
+                            "If you are not finding what you need, please change your search query, read a different file, "
+                            "check if the information is already in your system/project prompt, or proceed with writing the plan/report."
+                        )
+                    else:
+                        warning_msg = (
+                            f"\n\n[WARNING] You have executed the tool '{tool_name}' with these exact arguments {same_count + 1} times. "
+                            "If this command is repeatedly failing or yielding the same result, you are likely stuck in a loop. "
+                            "Please change your approach, try a different command, or if this is a blocking issue requiring user "
+                            "intervention (like system configuration or version mismatch), stop and output an 'ERROR: <description>' response."
+                        )
+
+            # ── Stale-Read Detection ──
+            # If the agent is re-reading the same file+offset a 3rd+ time,
+            # return [STALE] to break re-read spirals (saves tokens + loops).
+            # The count resets if the file was successfully modified in between.
+            if tool_name == "read_file":
+                target_file = tool_args.get("file_path", "")
+                read_key = (target_file, tool_args.get("offset"), tool_args.get("limit"))
+                
+                same_reads = 0
+                for item in reversed(tool_call_log[-20:]):
+                    # Reset check if there was a successful write/edit on the same file
+                    if item.get("tool") in ("write_file", "edit_file") and item.get("args", {}).get("file_path") == target_file:
+                        res_preview = str(item.get("result_preview", ""))
+                        if not res_preview.startswith("Error") and not res_preview.startswith("TOOL ERROR"):
+                            break
+                    if item.get("tool") == "read_file":
+                        item_key = (item.get("args", {}).get("file_path"), item.get("args", {}).get("offset"), item.get("args", {}).get("limit"))
+                        if item_key == read_key:
+                            same_reads += 1
+
+                if same_reads >= 2:  # This is the 3rd+ time
+                    tool_result = (
+                        f"[STALE] This file was already read {same_reads + 1} times with the same parameters. "
+                        f"Content has NOT changed. Do NOT re-read this file — use the previous output. "
+                        f"If you need different content, change offset/limit or read a different file."
+                    )
+                    tool_call_log.append({
+                        "iteration": iteration,
+                        "tool": tool_name,
+                        "args": tool_args,
+                        "result_preview": "[STALE] skipped",
+                    })
+                    tool_outputs.append(f"[{tool_name}]:\n{tool_result}")
+                    continue
+
+            # ── Format tool log line: concise, shows file + detail ──
+            fpath = tool_args.get("file_path", tool_args.get("path", ""))
+            fname = os.path.basename(fpath) if fpath else ""
+            # Detect line range from read_file args
+            read_offset = tool_args.get("offset", 0)
+            read_limit = tool_args.get("limit", None)
+
+            if tool_name == "read_file":
+                tool_label = f"read {fname or fpath}"
+                if read_offset:
+                    tool_label += f" @{read_offset}"
+                if read_limit:
+                    tool_label += f"+{read_limit}"
+            elif tool_name == "write_file":
+                content_len = len(str(tool_args.get("content", "")))
+                tool_label = f"write {fname or fpath} ({content_len}B)"
+            elif tool_name == "edit_file":
+                tool_label = f"edit {fname or fpath}"
+            elif tool_name == "run_command":
+                cmd = str(tool_args.get("command", ""))[:70]
+                tool_label = f"run {cmd}"
+            elif tool_name == "search_code":
+                pat = str(tool_args.get("pattern", ""))[:60]
+                tool_label = f"search \"{pat}\""
+            elif tool_name == "list_files":
+                lp = str(tool_args.get("path", "."))[:50]
+                tool_label = f"ls {lp}"
+            elif tool_name == "task":
+                tool_label = f"delegate {str(tool_args.get('name', ''))[:40]}"
+            elif tool_name == "start_async_task":
+                tool_label = f"async {str(tool_args.get('name', ''))[:40]}"
+            else:
+                tool_label = f"{tool_name}"
+
+            safe_update_state({"thoughts": {"developer": f"Using {tool_name}..."}})
+            _log(f"[DEVELOPER] {tool_label}")
+            import json
+            _log(f"🔧 Calling {tool_name}({json.dumps(tool_args)})")
+
+            try:
+                tool_result = execute_tool(tool_name, tool_args)
+                tool_result_str = str(tool_result)
+                if len(tool_result_str) > 8000:
+                    tool_result_str = tool_result_str[:4000] + "\n... (truncated middle) ...\n" + tool_result_str[-4000:]
+                _log(f"[TOOL OUTPUT] {tool_name}: {tool_result_str}")
+            except Exception as e:
+                tool_result = f"Tool execution error: {e}"
+                _log(f"[TOOL OUTPUT] {tool_name}: {tool_result}")
+
+            # ── Build detail string for the where_tag (shown in next LLM invocation) ──
+            tool_detail = ""
+
+            # Enrich read_file with actual line range from result
+            if tool_name == "read_file" and not str(tool_result).startswith("[STALE]"):
+                lines_match = re.search(r'lines (\d+)-(\d+) of (\d+)', str(tool_result)[:200])
+                if lines_match:
+                    r_start, r_end, r_total = lines_match.group(1), lines_match.group(2), lines_match.group(3)
+                    tool_detail = f"#{r_start}-{r_end}/{r_total}"
+                    _log(f"[DEVELOPER]   => {fname or fpath} {tool_detail}")
+
+            # Enrich edit_file with diff stats
+            if tool_name == "edit_file" and not str(tool_result).startswith("Error"):
+                added = len(re.findall(r'^\+[^+]', str(tool_result)[:2000], re.MULTILINE))
+                removed = len(re.findall(r'^\-[^-]', str(tool_result)[:2000], re.MULTILINE))
+                if added or removed:
+                    tool_detail = f"+{added} -{removed}"
+                    _log(f"[DEVELOPER]   => {fname or fpath} {tool_detail}")
+
+            tool_call_log.append({
+                "iteration": iteration,
+                "tool": tool_name,
+                "args": tool_args,
+                "result_preview": str(tool_result)[:200],
+                "detail": tool_detail,  # for where_tag enrichment
+            })
+
+            # Check for Sleep-and-Resume suspension trigger
+            if tool_name == "run_command" and tool_args.get("background") is True and "[OK] Started background process" in str(tool_result):
+                if os.environ.get("DEEP_AGENTS_EVAL_RUN") == "1":
+                    _log(f"[DEVELOPER] 💤 Background task started in evaluation mode. Sleeping 5 seconds for boot instead of suspending...")
+                    time.sleep(5)
+                else:
+                    _log(f"[DEVELOPER] 💤 Background task started. Suspending graph and starting automatic wake-up thread...")
+                    
+                    # Extract process name
+                    process_name = tool_args.get("command", "").split()[0]
+                    
+                    def _wakeup_trigger():
+                        # Sleep 15 seconds to let the server boot up
+                        time.sleep(15)
+                        try:
+                            # Call /api/run to resume
+                            url = "http://127.0.0.1:8000/api/run"
+                            payload = {
+                                "prompt": "continue",
+                                "workspace_path": project_path,
+                                "chat_id": chat_id
+                            }
+                            requests.post(url, json=payload, timeout=5)
+                            print("[WAKEUP] Wake-up request sent to API server.")
+                        except Exception as ex:
+                            print(f"[WAKEUP] Error sending wake-up request: {ex}")
+                            
+                    threading.Thread(target=_wakeup_trigger, daemon=True).start()
+                    
+                    # Save developer state to task.json
+                    try:
+                        task_data = load_task_tracking(project_path, chat_id)
+                        if task_data:
+                            serialized_msgs = serialize_messages(messages)
+                            
+                            task_data["developer_state"] = {
+                                "messages": serialized_msgs,
+                                "iteration": iteration,
+                                "tool_call_log": tool_call_log,
+                                "step_tool_calls": step_tool_calls,
+                                "tracked_files_created": tracked_files_created,
+                                "tracked_files_modified": tracked_files_modified,
+                                "last_response_text": last_response_text,
+                                "consecutive_read_turns": consecutive_read_turns,
+                                "voluntary_compact_requested": voluntary_compact_requested,
+                            }
+                            save_task_tracking(task_data, project_path, chat_id)
+                    except Exception as e:
+                        print(f"[DEVELOPER] Error saving developer state: {e}")
+                    
+                    return make_return({
+                        "code": f"// SUSPENDED: Waiting for background process '{process_name}'...",
+                        "agent_report": f"SUSPENDED: Waiting for background process '{process_name}' to boot. Will resume automatically.",
+                        "test_report": "",
+                        "project_path": project_path,
+                        "code_updated": False,
+                        "tech_spec_updated": False,
+                        "next_agent": "suspended",
+                    })
+
+            if warning_msg:
+                tool_result = str(tool_result) + warning_msg
+
+            if tool_name == "compact_conversation":
+                voluntary_compact_requested = True
+
+            if warning_msg:
+                tool_result = str(tool_result) + warning_msg
+
+            # Track artifacts for task.json
+            step_tool_calls += 1
+            if tool_name in ("write_file", "write_planning_file"):
+                fpath = tool_args.get("file_path", "")
+                if fpath and fpath not in tracked_files_created:
+                    tracked_files_created.append(fpath)
+            elif tool_name == "edit_file":
+                fpath = tool_args.get("file_path", "")
+                if fpath and fpath not in tracked_files_modified:
+                    tracked_files_modified.append(fpath)
+
+            # Format output for this tool
+            tool_outputs.append(f"[{tool_name}]:\n{tool_result}")
+
+            # ── Early-stop on verified test success ──
+            if tool_name == "run_command" and "[OK] Exit 0" in str(tool_result):
+                result_lower = str(tool_result).lower()
+                if "passed" in result_lower or "ok" in result_lower:
+                    if any(kw in result_lower for kw in ["test", "pytest", "unittest", "assert"]):
+                        if tracked_files_created or tracked_files_modified:
+                            any_early_stop = True
+
+        # If early stop was triggered during execution of the tools
+        if any_early_stop:
+            try:
+                task_tracking_data = load_task_tracking(project_path, chat_id)
+                if task_tracking_data and task_tracking_data.get("steps"):
+                    steps_data = task_tracking_data["steps"]
+                    current_idx = task_tracking_data.get("current_step", 0)
+                    if current_idx < len(steps_data):
+                        steps_data[current_idx]["notes"] = "Tests verified passing."
+                        steps_data[current_idx]["status"] = "completed"
+                        steps_data[current_idx]["completed_at"] = datetime.now().isoformat()
+                        steps_data[current_idx]["tool_calls"] = step_tool_calls
+                        
+                        # Step-level context isolation: clear developer_state on step completion
+                        if "developer_state" in task_tracking_data:
+                            save_task_tracking({k:v for k,v in task_tracking_data.items() if k != "developer_state"}, project_path, chat_id)
+                            del task_tracking_data["developer_state"]
+
+                        artifacts = task_tracking_data.setdefault("artifacts", {})
+                        if tracked_files_created:
+                            existing = set(artifacts.get("files_created", []))
+                            existing.update(tracked_files_created)
+                            artifacts["files_created"] = list(existing)
+                        if tracked_files_modified:
+                            existing = set(artifacts.get("files_modified", []))
+                            existing.update(tracked_files_modified)
+                            artifacts["files_modified"] = list(existing)
+                            
+                        next_step = current_idx + 1
+                        if next_step < len(steps_data):
+                            task_tracking_data["current_step"] = next_step
+                            steps_data[next_step]["status"] = "in_progress"
+                        else:
+                            task_tracking_data["status"] = "completed"
+                        save_task_tracking(task_tracking_data, project_path, chat_id)
+            except Exception as e:
+                print(f"[DEVELOPER] Error saving task progress: {e}")
+
+            agent_report_text = "Implementation complete. Tests passed."
+            return make_return({
+                "code": "Code successfully implemented and tests verified.",
+                "agent_report": agent_report_text,
+                "test_report": "",
+                "project_path": project_path,
+                "code_updated": True,
+                "tech_spec_updated": False,
+            })
+
+        combined_tool_result = "\n\n".join(tool_outputs)
+
+        # ── Progress Gate: prevent read-only death spirals ──
+        is_read_only_turn = not this_turn_has_write
+        _consecutive_read_turns = consecutive_read_turns
+        if is_read_only_turn:
+            _consecutive_read_turns += 1
+        else:
+            _consecutive_read_turns = 0
+        consecutive_read_turns = _consecutive_read_turns
+
+        if _consecutive_read_turns == 6:
+            combined_tool_result += (
+                "\n\n[PROGRESS GATE] You have spent 6 turns investigating without making any changes. "
+                "You MUST now either: (a) write_file or edit_file to make progress, "
+                "or (b) output your completion report if the task is done. "
+                "Do NOT call read_file or search_code again without a write in between."
+            )
+        elif _consecutive_read_turns >= 10:
+            combined_tool_result += (
+                "\n\n[HARD STOP] 10 consecutive investigation turns with zero changes. "
+                "You are out of investigation budget. You MUST stop investigating. "
+                "Either write your completion report NOW (no tools), or call write_file/edit_file immediately."
+            )
+
+        # ── Cost Awareness ──
+        cost_state = safe_get_state()
+        tu = cost_state.get("token_usage", {})
+        spent = tu.get("total_cost", 0)
+        n_calls = len(tu.get("calls", []))
+        if spent > 0:
+            cost_line = f"\n\n[COST: ${spent:.4f} spent across {n_calls} LLM calls. Be efficient.]"
+            combined_tool_result += cost_line
+
+        # Truncate response_text after the first tool block to prevent hallucinations
+        last_tool_idx = response_text.rfind("```")
+        if last_tool_idx != -1:
+            response_text = response_text[:last_tool_idx + 3]
+
+        history_text = re.sub(r'<thinking>.*?</thinking>', '', response_text, flags=re.DOTALL).strip()
+        ai_msg_id = f"dev-ai-{iteration}-{uuid.uuid4()}"
+        human_msg_id = f"dev-human-{iteration}-{uuid.uuid4()}"
+        additional_kwargs = {}
+        if reasoning_content:
+            additional_kwargs["reasoning_content"] = reasoning_content
+        messages.append(AIMessage(content=history_text, id=ai_msg_id, additional_kwargs=additional_kwargs))
+        messages.append(HumanMessage(content=combined_tool_result, id=human_msg_id))
+        appended_ids.extend([ai_msg_id, human_msg_id])
+
+        # Update shared state with progress
+        last_tool_name = tool_calls[-1].get("tool", "") if tool_calls else ""
+        if last_tool_name:
+            safe_update_state({"outputs": {"code": f"// Developer iteration {iteration}: {last_tool_name} completed"}})
+
     # Max iterations reached
     _log(f"[DEVELOPER] ⚠️ Max iterations ({max_iters}) reached")
     safe_update_state({"thoughts": {"developer": f"Reached maximum iterations ({max_iters})."}})
@@ -2681,19 +2681,6 @@ def developer_node(s: ITState) -> dict:
 
         try:
             task_data = load_task_tracking(project_path, chat_id)
-            if task_data:
-                serialized_msgs = serialize_messages(messages)
-                
-                # Make sure status is set to in_progress so the Supervisor Bypass triggers on wakeup
-                task_data["status"] = "in_progress"
-                task_data["developer_state"] = {
-                    "messages": serialized_msgs,
-                    "iteration": iteration,
-                    "tool_call_log": tool_call_log,
-                    "step_tool_calls": step_tool_calls,
-                    "tracked_files_created": tracked_files_created,
-                    "tracked_files_modified": tracked_files_modified,
-                    "last_response_text": last_response_text,
             if task_data:
                 serialized_msgs = serialize_messages(messages)
                 
@@ -2723,16 +2710,14 @@ def developer_node(s: ITState) -> dict:
             "tech_spec_updated": False,
             "next_agent": "suspended",
         })
-    
+
     summary = last_response_text[:5000] if last_response_text else f"Developer ran {iteration} tool calls."
-            "tech_spec_updated": False,
-            "next_agent": "suspended",
-        })
-    
+    agent_report = (
         f"I have successfully completed {iteration} turns. If you would like me to resume and continue "
         f"this work for another {max_iters} turns, please type 'continue' or 'go on'.\n\n"
         f"Here is what I accomplished so far:\n{summary}"
     )
+
     try:
         tool_log_val = json.dumps(tool_call_log, indent=2)
     except Exception:
@@ -2761,32 +2746,17 @@ def developer_node(s: ITState) -> dict:
             save_task_tracking(task_tracking_data, project_path, chat_id)
     except Exception as e:
         print(f"[DEVELOPER] Error saving partial task progress: {e}")
-    # ── END ──
 
     safe_update_state({
         "outputs": {
             "code": summary,
-            "agent_report": "Code implementation reached max iterations."
+            "agent_report": agent_report
         }
     })
 
     return make_return({
         "code": summary,
-        "agent_report": summary,
-        "test_report": "",
-        "project_path": project_path,
-    # ── END ──
-
-    safe_update_state({
-        "outputs": {
-            "code": summary,
-            "agent_report": "Code implementation reached max iterations."
-        }
-    })
-
-    return make_return({
-        "code": summary,
-        "agent_report": summary,
+        "agent_report": agent_report,
         "test_report": "",
         "project_path": project_path,
         "code_updated": True,
@@ -3440,6 +3410,20 @@ def parse_all_tool_calls(text: str) -> list[dict]:
                 results.append({"tool": inner["tool"], "args": inner.get("args", {})})
         except Exception:
             pass
+
+    # ── Normalize and Clean Up Formats ──
+    for r in results:
+        if not isinstance(r, dict):
+            continue
+        if "tool" not in r:
+            r["tool"] = ""
+        if "args" not in r or not isinstance(r["args"], dict):
+            r["args"] = {k: v for k, v in r.items() if k not in ("tool", "args")}
+        
+        # Keep only "tool" and "args" keys in the final dict
+        for k in list(r.keys()):
+            if k not in ("tool", "args"):
+                r.pop(k, None)
 
     # ── Deduplicate across all formats ──
     def _make_hashable(obj):
