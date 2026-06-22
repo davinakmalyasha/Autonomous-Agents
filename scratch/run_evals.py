@@ -297,7 +297,7 @@ def run_self_healing_loop(task: dict, project_path: str, chat_id: str, initial_r
                             stdout_err = f"Failed to fetch health endpoint on allocated port {port}."
                     except Exception as parse_e:
                         stdout_err = f"Failed to parse 'server_port.json': {parse_e}."
-            error_msg = f"VERIFICATION FAILURE: Tests failed. pytest output:\n{stdout_err}"
+            error_msg = f"VERIFICATION FAILURE: Tests failed. test command output:\n{stdout_err}"
             
         print(f"[Self-Heal] Feeding error traceback to agent...")
         consume_generator(run_and_sync_graph(error_msg, workspace_path=project_path, chat_id=chat_id))
@@ -331,8 +331,13 @@ def run_unit_task(task: dict, project_path: str) -> dict:
     # The developer agent's else branch handles direct implementation naturally:
     # "IMPLEMENT this user request: ... Explore the existing codebase, understand
     # the patterns, and implement the changes needed."
-    print(f"[Eval] Direct implementation step for: {task['prompt'][:60]}...")
-    consume_generator(run_and_sync_graph(task['prompt'], workspace_path=project_path, chat_id=chat_id))
+    prompt = task['prompt']
+    if task.get("expected_files"):
+        files_list = ", ".join(task["expected_files"])
+        prompt += f"\n\nIMPORTANT: You MUST write the following exact files in the root of the workspace: {files_list}. Do not use different file names or folder structures."
+
+    print(f"[Eval] Direct implementation step for: {prompt[:60]}...")
+    consume_generator(run_and_sync_graph(prompt, workspace_path=project_path, chat_id=chat_id))
     
     # Verification & Self-healing
     res = verify_and_score(task, project_path)
@@ -518,12 +523,12 @@ def verify_and_score(task: dict, project_path: str) -> dict:
             if any(p in root for p in [".pytest_cache", ".git", ".deep_agents"]):
                 continue
             for f in files:
-                if f.endswith(".py") or f.endswith(".json") or f.endswith(".md"):
+                if any(f.endswith(ext) for ext in [".py", ".json", ".md", ".js", ".ts", ".php", ".html", ".css", ".sql"]):
                     rel_path = os.path.relpath(os.path.join(root, f), project_path)
                     created_files.append(rel_path.replace("\\", "/"))
 
-    has_impl = any(not f.startswith("test_") and f.endswith(".py") for f in created_files)
-    has_test = any(f.startswith("test_") and f.endswith(".py") for f in created_files)
+    has_impl = any(not f.startswith("test_") and not f.startswith("test") and any(f.endswith(ext) for ext in [".py", ".js", ".ts", ".php", ".html", ".css"]) for f in created_files)
+    has_test = any((f.startswith("test_") or f.startswith("test")) and any(f.endswith(ext) for ext in [".py", ".js", ".ts", ".php"]) for f in created_files)
     
     expected_exist = False
     if task.get("expected_files"):
@@ -540,15 +545,33 @@ def verify_and_score(task: dict, project_path: str) -> dict:
     stdout, stderr = "", ""
     
     if files_ok and task.get("verify_cmd"):
-        venv_python = os.path.join(PROJECT_ROOT, "venv312", "Scripts", "python.exe")
-        if not os.path.isfile(venv_python):
-            venv_python = os.path.join(PROJECT_ROOT, "venv", "Scripts", "python.exe")
-        if not os.path.isfile(venv_python):
-            venv_python = "python"
+        cmd = task["verify_cmd"]
+        # Replace 'python' with the resolved virtual env python path if it starts with 'python'
+        if cmd.startswith("python "):
+            venv_python = os.path.join(PROJECT_ROOT, "venv312", "Scripts", "python.exe")
+            if not os.path.isfile(venv_python):
+                venv_python = os.path.join(PROJECT_ROOT, "venv", "Scripts", "python.exe")
+            if not os.path.isfile(venv_python):
+                venv_python = "python"
+            cmd = cmd.replace("python", venv_python, 1)
+        else:
+            # Dynamic Node.js npm test fallback
+            package_json_path = os.path.join(project_path, "package.json")
+            if os.path.exists(package_json_path):
+                try:
+                    import json
+                    with open(package_json_path, 'r', encoding='utf-8') as f:
+                        pkg = json.load(f)
+                        test_script = pkg.get("scripts", {}).get("test", "")
+                        if test_script and "no test specified" not in test_script:
+                            cmd = "npm test"
+                except Exception:
+                    pass
             
         try:
             verify_res = subprocess.run(
-                [venv_python, "-m", "pytest"],
+                cmd,
+                shell=True,
                 cwd=project_path,
                 stdout=subprocess.PIPE,
                 stderr=subprocess.PIPE,
@@ -562,7 +585,7 @@ def verify_and_score(task: dict, project_path: str) -> dict:
             tests_ok = False
             stdout = te.stdout.decode('utf-8', errors='replace') if isinstance(te.stdout, bytes) else (te.stdout or "")
             stderr_err = te.stderr.decode('utf-8', errors='replace') if isinstance(te.stderr, bytes) else (te.stderr or "")
-            stderr = stderr_err + "\n\nTIMEOUT ERROR: Pytest execution timed out after 60 seconds. Possible deadlock or infinite loop in code/tests."
+            stderr = stderr_err + f"\n\nTIMEOUT ERROR: Execution timed out after 60 seconds. Command: {cmd}"
     elif files_ok and not task.get("verify_cmd"):
         # If no verify command, files existing is enough to pass
         tests_ok = True
@@ -600,30 +623,30 @@ def main():
     
     import sys
     # Parse CLI arguments to filter tasks
-    target_id = None
+    target_ids = None
     args = sys.argv[1:]
     for idx, arg in enumerate(args):
         if arg.startswith("--task="):
             try:
-                target_id = int(arg.split("=")[1])
+                target_ids = [int(x) for x in arg.split("=")[1].split(",")]
             except ValueError:
                 pass
         elif arg == "--task" and idx + 1 < len(args):
             try:
-                target_id = int(args[idx + 1])
+                target_ids = [int(x) for x in args[idx + 1].split(",")]
             except ValueError:
                 pass
 
     run_unit = []
     run_inter = []
     
-    if target_id is not None:
-        run_unit = [t for t in UNIT_TASKS if t["id"] == target_id]
-        run_inter = [t for t in INTERACTIVE_TASKS if t["id"] == target_id]
+    if target_ids is not None:
+        run_unit = [t for t in UNIT_TASKS if t["id"] in target_ids]
+        run_inter = [t for t in INTERACTIVE_TASKS if t["id"] in target_ids]
         if not run_unit and not run_inter:
-            print(f"ERROR: Task ID {target_id} not found.")
+            print(f"ERROR: Task IDs {target_ids} not found.")
             return
-        print(f"[Eval] Running targeted test for Task ID: {target_id}")
+        print(f"[Eval] Running targeted test for Task IDs: {target_ids}")
     else:
         run_unit = list(UNIT_TASKS)
         run_inter = list(INTERACTIVE_TASKS)

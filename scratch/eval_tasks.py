@@ -58,6 +58,41 @@ UNIT_TASKS = [
         "prompt": "Write a task execution engine in Python that runs tasks with dependencies concurrently using a thread pool. It must check for cycles in the dependency graph and handle task failures. Test it with unit tests.",
         "verify_cmd": "python -m pytest test_dag_engine.py",
         "expected_files": ["dag_engine.py", "test_dag_engine.py"]
+    },
+    {
+        "id": 16,
+        "name": "RESTful Todo API (Node.js/Express)",
+        "prompt": "Build a RESTful TODO list API in Node.js using Express. The API should persist tasks in a local SQLite database (todo.db). It must support endpoints for: creating a task (POST /tasks), retrieving all tasks (GET /tasks), updating a task's title and status (PUT /tasks/{id}), and deleting a task (DELETE /tasks/{id}). Validate input: title is required and must be 1-200 chars. Write a Node.js test script `test_todo_api.js` using the native 'assert' module (or a library like Jest) that spins up the server, calls all endpoints using fetch/http, and verifies correctness.",
+        "verify_cmd": "node test_todo_api.js",
+        "expected_files": ["todo_api.js", "test_todo_api.js", "package.json"]
+    },
+    {
+        "id": 17,
+        "name": "Dynamic Interactive Dashboard (HTML/CSS/JS)",
+        "prompt": "Create a pure frontend interactive dashboard page (`index.html`, `dashboard.js`, `styles.css`) for project management. It should support: displaying a list of tasks, adding/deleting tasks dynamically in the DOM, sorting tasks by priority (High/Medium/Low), and persisting the tasks to LocalStorage. It must look professional, clean, and modern. Write a Node.js test script `test_dashboard.js` that checks for the existence of the HTML, JS, and CSS files, reads and parses the HTML using regex/dom parsing to verify the necessary elements (like task list, sort button) exist, and validates the JS functions.",
+        "verify_cmd": "node test_dashboard.js",
+        "expected_files": ["index.html", "dashboard.js", "styles.css", "test_dashboard.js"]
+    },
+    {
+        "id": 18,
+        "name": "TypeScript Utility: JWT Middleware",
+        "prompt": "Write a Node.js/TypeScript Express middleware for JWT authentication and role-based access control. It should export a function `requireAuth(allowedRoles: string[])` that validates the 'Authorization' header for a bearer JWT token (verifying signature and expiration), decodes the payload (containing username and role), and attaches it to the request. If the token is missing, expired, or doesn't have the required role, return appropriate 401/403 errors. Write a test file `test_middleware.ts` that runs tests verifying all these middleware rules. Since TypeScript is used, provide a working `tsconfig.json` and package configurations.",
+        "verify_cmd": "npx ts-node test_middleware.ts",
+        "expected_files": ["middleware.ts", "test_middleware.ts", "tsconfig.json", "package.json"]
+    },
+    {
+        "id": 19,
+        "name": "E-Commerce Shopping Cart API (PHP)",
+        "prompt": "Build an object-oriented shopping cart class and API in PHP. The `Cart` class should support adding items (with quantity), removing items, updating quantity, calculating the subtotal, applying a percentage discount coupon, and calculating a 10% tax on the discounted subtotal. Write a PHP script `CartTest.php` that uses native PHP `assert()` statements to thoroughly verify the Cart class correctness (adding, removing, quantity updates, discounts, taxes).",
+        "verify_cmd": "php CartTest.php",
+        "expected_files": ["Cart.php", "CartTest.php"]
+    },
+    {
+        "id": 20,
+        "name": "SQL Schema Migrator (Node.js)",
+        "prompt": "Create a database schema migrator utility in Node.js/JavaScript. It should read schema migration files from a folder (`migrations/001_init.sql`, `migrations/002_add_status.sql` etc.), apply them in sequence to an SQLite database, and track the current version of the schema in a `schema_version` table in the database so it never runs the same migration twice. It must support applying new migrations (up) and rollback of migrations (down). Write a test script `test_migrator.js` that tests applying and rolling back migrations and confirms the SQLite database schema matches the expected state.",
+        "verify_cmd": "node test_migrator.js",
+        "expected_files": ["migrator.js", "test_migrator.js"]
     }
 ]
 
