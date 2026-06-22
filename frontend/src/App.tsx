@@ -1,7 +1,7 @@
 import { useState, useCallback, useEffect, useRef } from 'react';
 import TitleBar from './components/Layout/TitleBar';
 import Sidebar from './components/Layout/Sidebar';
-import ChatView from './components/Workspace/ChatView';
+import AgentCanvas from './components/Canvas/AgentCanvas';
 import SettingsModal from './components/Layout/SettingsModal';
 import TokenStatsModal from './components/Layout/TokenStatsModal';
 import { usePipeline } from './hooks/usePipeline';
@@ -13,7 +13,7 @@ const WELCOME_MESSAGES: ChatMessage[] = [
   {
     id: 'welcome-1',
     role: 'system',
-    content: 'Connected to Antigravity v3 — Supervisor + Developer agent online. Add a workspace folder to get started.',
+    content: 'Connected to VinCode v3 — Supervisor + Developer agent online. Add a workspace folder to get started.',
     timestamp: new Date().toISOString(),
   },
 ];
@@ -23,6 +23,7 @@ export default function App() {
   const state: AppState | null = pipeState;
 
   const [messages, setMessages] = useState<ChatMessage[]>(WELCOME_MESSAGES);
+  const [isPersisting, setIsPersisting] = useState(false);
   const [activeWorkspace, setActiveWorkspace] = useState<WorkspaceInfo | null>(null);
   const [activeChat, setActiveChat] = useState<ChatData | null>(null);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
@@ -100,7 +101,7 @@ export default function App() {
         console.error('[testApi] Fetch error:', err);
       }
     };
-    console.log('[Antigravity] testApi() registered — call window.testApi() in console to test API directly');
+    console.log('[VinCode] testApi() registered — call window.testApi() in console to test API directly');
   }, []);
 
   // ── Handle pipeline completion persistence and synchronization ──
@@ -111,6 +112,7 @@ export default function App() {
       wasRunning.current = false;
       if (activeWorkspace && activeChat) {
         console.log('[App] Pipeline run completed. Saving trace and final response...');
+        setIsPersisting(true);
         
         const saveAndRefresh = async () => {
           try {
@@ -136,6 +138,8 @@ export default function App() {
             setMessages(updatedChat.messages);
           } catch (err) {
             console.error('[App] Failed to complete run persistence:', err);
+          } finally {
+            setIsPersisting(false);
           }
         };
 
@@ -259,7 +263,7 @@ export default function App() {
   }, []);
 
   const displayMessages = [...messages];
-  if (isRunning && state?.live_terminal_log) {
+  if ((isRunning || isPersisting) && state?.live_terminal_log) {
     const { steps, assistantResponse } = parseLogToSteps(state.live_terminal_log);
     const elapsed = runStartTime.current
       ? Math.round((Date.now() - runStartTime.current) / 1000) + 's'
@@ -271,8 +275,8 @@ export default function App() {
       agentName: 'Assistant',
       content: assistantResponse || '',
       timestamp: new Date().toISOString(),
-      duration: 'active',
-      metadata: { isTrace: true, steps, duration: elapsed },
+      duration: isRunning ? 'active' : (elapsed === 'active' ? 'completed' : elapsed),
+      metadata: { isTrace: true, steps, duration: elapsed === 'active' ? undefined : elapsed },
     });
   }
 
@@ -289,9 +293,18 @@ export default function App() {
   };
 
   return (
-    <div className="flex flex-col h-screen w-screen bg-zinc-950">
-      <TitleBar />
-      <div className="flex flex-1 min-h-0">
+    <div className="flex flex-col h-screen w-screen bg-[#0c0c0e] text-zinc-100 overflow-hidden font-sans">
+      <TitleBar
+        workspaceName={activeWorkspace?.name ?? null}
+        chatTitle={activeChat?.title ?? null}
+        onOpenSettings={() => setIsSettingsOpen(true)}
+        onOpenStats={() => setIsTokenStatsOpen(true)}
+        totalInput={combinedTokenUsage.total_input_tokens}
+        totalOutput={combinedTokenUsage.total_output_tokens}
+        totalCost={combinedTokenUsage.total_cost}
+        showPill={!!activeWorkspace && !!activeChat}
+      />
+      <div className="flex flex-1 min-h-0" style={{ padding: '12px', gap: '12px', backgroundColor: '#0c0c0e' }}>
         <Sidebar
           activeWorkspaceId={activeWorkspace?.id ?? null}
           activeChatId={activeChat?.id ?? null}
@@ -301,7 +314,7 @@ export default function App() {
           onToggleCollapse={() => setSidebarCollapsed((v) => !v)}
           onOpenSettings={() => setIsSettingsOpen(true)}
         />
-        <ChatView
+        <AgentCanvas
           messages={displayMessages}
           isRunning={isRunning}
           workspaceName={activeWorkspace?.name ?? null}
@@ -310,13 +323,13 @@ export default function App() {
           models={models}
           state={state}
           hasActiveChat={!!activeWorkspace && !!activeChat}
-          activeChat={activeChat}
           notification={notification}
           onSend={handleSend}
           onCancel={cancel}
           onModelChange={setModel}
           onClearNotification={() => setNotification(null)}
-          onOpenStats={() => setIsTokenStatsOpen(true)}
+          workspaceId={activeWorkspace?.id ?? null}
+          chatId={activeChat?.id ?? null}
         />
       </div>
       <SettingsModal

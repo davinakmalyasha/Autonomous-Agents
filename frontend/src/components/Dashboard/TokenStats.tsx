@@ -1,4 +1,3 @@
-import React from 'react';
 import type { TokenUsage } from '../../types';
 import { TokenSummary } from './TokenSummary';
 import { EfficiencyInsights } from './EfficiencyInsights';

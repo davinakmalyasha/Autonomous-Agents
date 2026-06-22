@@ -10,8 +10,15 @@ let apiProcess;
 const isDev = !app.isPackaged;
 
 function startApiServer() {
+  const venv312Python = path.join(__dirname, '..', '..', 'venv312', 'Scripts', 'python.exe');
   const venvPython = path.join(__dirname, '..', '..', 'venv', 'Scripts', 'python.exe');
-  const pythonCmd = fs.existsSync(venvPython) ? venvPython : (process.platform === 'win32' ? 'python' : 'python3');
+  
+  let pythonCmd = process.platform === 'win32' ? 'python' : 'python3';
+  if (fs.existsSync(venv312Python) && fs.existsSync(path.join(__dirname, '..', '..', 'venv312', 'pyvenv.cfg'))) {
+    pythonCmd = venv312Python;
+  } else if (fs.existsSync(venvPython) && fs.existsSync(path.join(__dirname, '..', '..', 'venv', 'pyvenv.cfg'))) {
+    pythonCmd = venvPython;
+  }
   const apiPath = path.join(__dirname, '..', '..', 'api_server.py');
 
   const args = [apiPath];
@@ -46,14 +53,19 @@ function createWindow() {
     minHeight: 700,
     title: 'Antigravity 2.0 — Agent Workspace',
     icon: path.join(__dirname, 'icon.png'),
-    backgroundColor: '#131314',
+    backgroundColor: '#0c0c0e',
     webPreferences: {
       nodeIntegration: false,
       contextIsolation: true,
       preload: path.join(__dirname, 'preload.cjs'),
     },
     autoHideMenuBar: true,
-    frame: true,
+    titleBarStyle: 'hidden',
+    titleBarOverlay: process.platform === 'win32' ? {
+      color: '#0c0c0e',
+      symbolColor: '#a1a1aa',
+      height: 38
+    } : true,
   });
 
   mainWindow.maximize();

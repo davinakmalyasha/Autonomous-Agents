@@ -30,13 +30,16 @@ export default function MessageBubble({ message }: Props) {
   const isTool = isAgent && isToolCall(message.content);
 
   return (
-    <div className="animate-fade-in mb-5 group">
+    <div className="animate-fade-in group" style={{ marginBottom: '24px' }}>
       {/* ────────────────────────────────────
           USER MESSAGE — simple text display
           ──────────────────────────────────── */}
       {isUser && (
         <div className="flex justify-end">
-          <div className="max-w-[80%] px-4 py-2.5 text-[14px] text-zinc-100 leading-relaxed rounded-2xl bg-blue-600">
+          <div 
+            className="max-w-[80%] text-[14px] text-zinc-100 leading-relaxed bg-zinc-800 border border-zinc-700/50"
+            style={{ padding: '10px 16px', borderRadius: '14px' }}
+          >
             {message.content}
           </div>
         </div>
@@ -46,7 +49,10 @@ export default function MessageBubble({ message }: Props) {
           TOOL CALL — special rendering with icon
           ──────────────────────────────────── */}
       {isTool && (
-        <div className="flex items-start gap-2 px-3 py-2 rounded-lg bg-indigo-500/5 border border-indigo-500/15">
+        <div 
+          className="flex items-start gap-2 rounded-lg bg-indigo-500/5 border border-indigo-500/15"
+          style={{ padding: '12px' }}
+        >
           <div className="flex-shrink-0 mt-0.5">
             {toolIcon(message.content)}
           </div>
@@ -68,7 +74,7 @@ export default function MessageBubble({ message }: Props) {
         <div>
           {/* Agent name label */}
           {message.agentName && (
-            <div className="text-[10px] font-semibold text-zinc-500 uppercase tracking-wider mb-1">
+            <div className="text-[10px] font-semibold text-zinc-500 uppercase tracking-wider mb-1.5">
               {message.agentName}
             </div>
           )}
@@ -127,7 +133,10 @@ export default function MessageBubble({ message }: Props) {
           ERROR MESSAGE — alert/error block
           ──────────────────────────────────── */}
       {isError && (
-        <div className="flex items-start gap-2.5 px-3.5 py-2.5 rounded-lg bg-red-500/5 border border-red-500/15">
+        <div 
+          className="flex items-start gap-2.5 rounded-lg bg-red-500/5 border border-red-500/15"
+          style={{ padding: '12px' }}
+        >
           <AlertTriangle size={14} className="text-red-400 flex-shrink-0 mt-0.5" />
           <div className="min-w-0">
             <span className="text-[13px] font-semibold text-red-400">Error</span>

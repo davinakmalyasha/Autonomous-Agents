@@ -1,5 +1,4 @@
 import { useState } from 'react';
-import { ChevronDown, ChevronRight, Clock } from 'lucide-react';
 import ExecutionTrace from './ExecutionTrace';
 import type { TraceStep } from '../../utils/logParser';
 
@@ -15,42 +14,37 @@ export default function TraceAccordion({ steps, isActive, duration }: Props) {
   if (isActive) {
     return (
       <div className="flex flex-col mb-3">
+        <div className="text-[13px] text-zinc-500 font-medium select-none py-0.5">
+          Working...
+        </div>
         <ExecutionTrace steps={steps} isActive={isActive} />
       </div>
     );
   }
 
-  // Format duration helper
   const formatDurationText = (dur?: string): string => {
     if (!dur) return "Worked for a few seconds";
     const num = parseInt(dur);
     if (isNaN(num)) return `Worked for ${dur}`;
-    if (num < 60) {
-      return `Worked for ${num} second${num !== 1 ? 's' : ''}`;
-    }
-    const mins = Math.floor(num / 60);
-    const secs = num % 60;
-    if (secs === 0) {
-      return `Worked for ${mins} minute${mins !== 1 ? 's' : ''}`;
-    }
-    return `Worked for ${mins} minute${mins !== 1 ? 's' : ''} ${secs} second${secs !== 1 ? 's' : ''}`;
+    return `Worked for ${num}s`;
   };
 
   const durationText = formatDurationText(duration);
 
   return (
-    <div className="flex flex-col mb-3 align-start">
-      <button
+    <div className="flex flex-col mb-3 items-start">
+      <div
         onClick={() => setIsOpen(!isOpen)}
-        className="flex items-center gap-1.5 py-1 px-2.5 w-fit text-[12px] text-zinc-400 font-medium bg-zinc-900/40 hover:bg-zinc-800/60 border border-zinc-800/50 rounded-md transition-all select-none hover:text-zinc-200"
+        className="flex items-center gap-1 py-0.5 w-fit text-[13px] text-zinc-500 font-medium cursor-pointer select-none hover:text-zinc-300 transition-colors"
       >
-        {isOpen ? <ChevronDown size={13} className="text-zinc-500" /> : <ChevronRight size={13} className="text-zinc-500" />}
-        <Clock size={12} className="text-zinc-500" />
         <span>{durationText}</span>
-      </button>
+        <span className="text-[10px] text-zinc-600 font-sans ml-1 select-none">
+          {isOpen ? '▾' : '▸'}
+        </span>
+      </div>
 
       {isOpen && (
-        <div className="mt-1.5 pl-2.5 border-l border-zinc-900/60">
+        <div className="mt-1 pl-2.5 border-l border-zinc-800">
           <ExecutionTrace steps={steps} isActive={false} />
         </div>
       )}

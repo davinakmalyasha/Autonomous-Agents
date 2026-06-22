@@ -95,3 +95,25 @@ html, body, #root {
   box-shadow: 0 0 0 1px rgba(99, 102, 241, 0.25);
   border-color: rgba(99, 102, 241, 0.3);
 }
+
+@keyframes dash_pulse_anim {
+  from {
+    stroke-dashoffset: 80;
+  }
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+
+@keyframes slideIn {
+  from {
+    transform: translateX(100%);
+  }
+  to {
+    transform: translateX(0);
+  }
+}
+
+.animate-slide-in {
+  animation: slideIn 0.25s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}

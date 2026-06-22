@@ -1,4 +1,3 @@
-import React from 'react';
 import { X, Activity } from 'lucide-react';
 import { TokenStats } from '../Dashboard/TokenStats';
 import type { TokenUsage } from '../../types';

@@ -27,19 +27,43 @@ export function parseLogToSteps(log: string): { steps: TraceStep[]; assistantRes
   let assistantResponse: string | null = null;
   let currentStep: TraceStep | null = null;
   let stepCounter = 0;
+  let activeAgent = 'Supervisor';
 
   for (const line of lines) {
     const trimmed = line.trim();
     if (!trimmed) continue;
 
+    // Check for agent headers like "--- [BA AGENT] ---"
+    const agentHeaderMatch = trimmed.match(/^---\s+\[(\w+)\s+AGENT\]\s+---$/i);
+    if (agentHeaderMatch) {
+      activeAgent = agentHeaderMatch[1];
+      continue;
+    }
+
+    // Check for thoughts like "[DEVELOPER THOUGHTS] >> reasoning content"
+    const thoughtMatch = trimmed.match(/^\[(\w+)\s+THOUGHTS\]\s+>>\s+(.*)$/i);
+    if (thoughtMatch) {
+      activeAgent = thoughtMatch[1];
+      currentStep = {
+        id: `step-${stepCounter++}`,
+        type: 'thought',
+        agent: activeAgent,
+        title: `${activeAgent} Thoughts`,
+        content: thoughtMatch[2],
+      };
+      steps.push(currentStep);
+      continue;
+    }
+
     if (trimmed.startsWith('[THOUGHT]')) {
       const match = trimmed.match(/^\[THOUGHT\]\s+\[([^\]]+)\]\s+(.*)$/);
       if (match) {
+        activeAgent = match[1];
         currentStep = {
           id: `step-${stepCounter++}`,
           type: 'thought',
-          agent: match[1],
-          title: `${match[1]} Thought`,
+          agent: activeAgent,
+          title: `${activeAgent} Thought`,
           content: match[2],
         };
         steps.push(currentStep);
@@ -48,11 +72,12 @@ export function parseLogToSteps(log: string): { steps: TraceStep[]; assistantRes
       // Real-time developer status messages
       const match = trimmed.match(/^🧠\s+(\w+):\s+(.*)$/);
       if (match) {
+        activeAgent = match[1];
         currentStep = {
           id: `step-${stepCounter++}`,
           type: 'thought',
-          agent: match[1],
-          title: `${match[1]} Thinking`,
+          agent: activeAgent,
+          title: `${activeAgent} Thinking`,
           content: match[2],
         };
         steps.push(currentStep);
@@ -62,11 +87,18 @@ export function parseLogToSteps(log: string): { steps: TraceStep[]; assistantRes
       if (match) {
         const tool = match[1];
         let args = match[2];
-        // Try to parse as JSON for cleaner field extraction in display
+        let displayTitle = tool === 'run_command' ? 'Running command' : `Calling ${tool}`;
+
+        // Try to parse as JSON for cleaner field extraction and specialized task titles
         try {
           const parsed = JSON.parse(args);
-          // Store structured args — keep file_path, pattern, command for display
           args = JSON.stringify(parsed);
+          if ((tool === 'task' || tool === 'start_async_task') && parsed.name) {
+            const subagentName = parsed.name;
+            displayTitle = tool === 'task' 
+              ? `Delegating to ${subagentName}` 
+              : `Spawning async ${subagentName}`;
+          }
         } catch {
           // Not valid JSON — keep raw args string but truncate if huge
           if (args.length > 500) args = args.substring(0, 500) + '...';
@@ -74,8 +106,8 @@ export function parseLogToSteps(log: string): { steps: TraceStep[]; assistantRes
         currentStep = {
           id: `step-${stepCounter++}`,
           type: tool === 'run_command' ? 'command' : 'tool',
-          agent: 'Developer',
-          title: tool === 'run_command' ? 'Running command' : `Calling ${tool}`,
+          agent: activeAgent,
+          title: displayTitle,
           toolName: tool,
           args,
           content: '',
@@ -84,8 +116,29 @@ export function parseLogToSteps(log: string): { steps: TraceStep[]; assistantRes
       }
     } else if (trimmed.startsWith('[TOOL]')) {
       // Skip TOOL header prefix line
+    } else if (trimmed.startsWith('[TOOL OUTPUT]')) {
+      const match = trimmed.match(/^\[TOOL OUTPUT\]\s+(\w+):\s+(.*)$/i);
+      if (match) {
+        const toolName = match[1];
+        const resultPreview = match[2];
+        if (currentStep && currentStep.toolName === toolName) {
+          currentStep.content = resultPreview;
+        }
+      }
+    } else if (
+      trimmed.startsWith('[ORCH Iteration') ||
+      trimmed.startsWith('[Orchestrator]') ||
+      trimmed.startsWith('🤖 Supervisor:')
+    ) {
+      currentStep = null;
     } else if (trimmed.startsWith('🤖 Assistant:')) {
       assistantResponse = trimmed.slice(13).trim();
+      currentStep = null;
+    } else if (trimmed.startsWith('[ORCHESTRATOR] Summary:')) {
+      assistantResponse = trimmed.slice(23).trim();
+      currentStep = null;
+    } else if (trimmed.startsWith('[DEVELOPER] Summary:')) {
+      assistantResponse = trimmed.slice(20).trim();
       currentStep = null;
     } else if (trimmed.startsWith('🤖 Supervisor:')) {
       currentStep = null;

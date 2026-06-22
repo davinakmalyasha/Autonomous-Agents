@@ -2,7 +2,7 @@
   "name": "antigravity-desktop",
   "private": true,
   "version": "2.0.0",
-  "description": "Antigravity 2.0 — Multi-Agent AI Desktop Workspace",
+  "description": "VinCode — Multi-Agent AI Desktop Workspace",
   "author": "Davin Akmal Yasha",
   "type": "module",
   "main": "electron/main.cjs",
@@ -15,8 +15,8 @@
     "lint": "eslint ."
   },
   "build": {
-    "appId": "com.antigravity.workspace",
-    "productName": "Antigravity",
+    "appId": "com.vincode.workspace",
+    "productName": "VinCode",
     "directories": {
       "output": "release"
     },

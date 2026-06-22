@@ -1,4 +1,3 @@
-import React from 'react';
 import type { TokenUsage } from '../../types';
 
 interface TokenSummaryProps {
