@@ -1,0 +1,37 @@
+{
+  "id": "chat-8388fa70279c",
+  "title": "New Conversation",
+  "model": "Automatic Fallback",
+  "createdAt": "2026-06-22T21:30:28.463588",
+  "updatedAt": "2026-06-22T21:43:52.649097",
+  "messages": [
+    {
+      "id": "msg-2ebee8fa",
+      "role": "user",
+      "content": "what's inside this folder?",
+      "timestamp": "2026-06-22T21:30:39.506764",
+      "index": 0
+    },
+    {
+      "id": "msg-36b62a8a",
+      "role": "user",
+      "content": "i want you to delete all of that, and we recreate a website, more like a portofolio website.",
+      "timestamp": "2026-06-22T21:35:36.892518",
+      "index": 2
+    }
+  ],
+  "daily_summaries": [],
+  "current_day_messages": [
+    {
+      "sender": "user",
+      "text": "what's inside this folder?",
+      "timestamp": "2026-06-22T21:30:39.524829"
+    },
+    {
+      "sender": "user",
+      "text": "i want you to delete all of that, and we recreate a website, more like a portofolio website.",
+      "timestamp": "2026-06-22T21:35:36.915590"
+    }
+  ],
+  "last_active_date": "2026-06-22"
+}

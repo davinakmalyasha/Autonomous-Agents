@@ -1,0 +1,181 @@
+{
+  "id": "chat-73c37ce6f695",
+  "title": "New Conversation",
+  "model": "Automatic Fallback",
+  "createdAt": "2026-06-22T18:46:05.682209",
+  "updatedAt": "2026-06-22T22:49:14.909096",
+  "messages": [
+    {
+      "id": "msg-724cdd9c",
+      "role": "user",
+      "content": "hello",
+      "timestamp": "2026-06-22T18:46:09.106625",
+      "index": 0
+    },
+    {
+      "id": "msg-867089b3",
+      "role": "user",
+      "content": "what project is this?",
+      "timestamp": "2026-06-22T18:46:18.944680",
+      "index": 2
+    },
+    {
+      "id": "msg-ad7c9879",
+      "role": "user",
+      "content": "hi",
+      "timestamp": "2026-06-22T19:47:25.470640",
+      "index": 4
+    },
+    {
+      "id": "msg-7906e4a6",
+      "role": "user",
+      "content": "hi",
+      "timestamp": "2026-06-22T20:35:10.292262",
+      "index": 6
+    },
+    {
+      "id": "msg-29ae9846",
+      "role": "user",
+      "content": "hy?",
+      "timestamp": "2026-06-22T20:50:02.298301",
+      "index": 8
+    },
+    {
+      "id": "msg-eab8cd75",
+      "role": "user",
+      "content": "what project is this?",
+      "timestamp": "2026-06-22T20:50:25.041074",
+      "index": 10
+    },
+    {
+      "id": "msg-73dfb42f",
+      "role": "user",
+      "content": "yeah what project is this?",
+      "timestamp": "2026-06-22T20:50:31.662889",
+      "index": 12
+    },
+    {
+      "id": "msg-64e5d9b5",
+      "role": "user",
+      "content": "yeah i asked you",
+      "timestamp": "2026-06-22T21:26:48.542914",
+      "index": 14
+    },
+    {
+      "id": "msg-0c33ce78",
+      "role": "user",
+      "content": "hello?",
+      "timestamp": "2026-06-22T21:26:53.503714",
+      "index": 15
+    },
+    {
+      "id": "msg-4aebce95",
+      "role": "user",
+      "content": "yeah anwer my question",
+      "timestamp": "2026-06-22T21:27:10.136344",
+      "index": 17
+    },
+    {
+      "id": "msg-56b91cfe",
+      "role": "user",
+      "content": "hello",
+      "timestamp": "2026-06-22T22:40:32.489523",
+      "index": 19
+    },
+    {
+      "id": "msg-27e689c9",
+      "role": "user",
+      "content": "my name?",
+      "timestamp": "2026-06-22T22:40:39.342985",
+      "index": 21
+    },
+    {
+      "id": "msg-4fa926b6",
+      "role": "user",
+      "content": "my name is davin",
+      "timestamp": "2026-06-22T22:48:42.280019",
+      "index": 23
+    },
+    {
+      "id": "msg-3821ceb9",
+      "role": "user",
+      "content": "whats my name?",
+      "timestamp": "2026-06-22T22:49:06.450026",
+      "index": 25
+    }
+  ],
+  "daily_summaries": [],
+  "current_day_messages": [
+    {
+      "sender": "user",
+      "text": "hello",
+      "timestamp": "2026-06-22T18:46:09.134622"
+    },
+    {
+      "sender": "user",
+      "text": "what project is this?",
+      "timestamp": "2026-06-22T18:46:18.984701"
+    },
+    {
+      "sender": "user",
+      "text": "hi",
+      "timestamp": "2026-06-22T19:47:25.513173"
+    },
+    {
+      "sender": "user",
+      "text": "hi",
+      "timestamp": "2026-06-22T20:35:10.317606"
+    },
+    {
+      "sender": "user",
+      "text": "hy?",
+      "timestamp": "2026-06-22T20:50:02.331317"
+    },
+    {
+      "sender": "user",
+      "text": "what project is this?",
+      "timestamp": "2026-06-22T20:50:25.066819"
+    },
+    {
+      "sender": "user",
+      "text": "yeah what project is this?",
+      "timestamp": "2026-06-22T20:50:31.682139"
+    },
+    {
+      "sender": "user",
+      "text": "yeah i asked you",
+      "timestamp": "2026-06-22T21:26:48.607561"
+    },
+    {
+      "sender": "user",
+      "text": "hello?",
+      "timestamp": "2026-06-22T21:26:53.545570"
+    },
+    {
+      "sender": "user",
+      "text": "yeah anwer my question",
+      "timestamp": "2026-06-22T21:27:10.157509"
+    },
+    {
+      "sender": "user",
+      "text": "hello",
+      "timestamp": "2026-06-22T22:40:32.531032"
+    },
+    {
+      "sender": "user",
+      "text": "my name?",
+      "timestamp": "2026-06-22T22:40:39.364140"
+    },
+    {
+      "sender": "user",
+      "text": "my name is davin",
+      "timestamp": "2026-06-22T22:48:42.302372"
+    },
+    {
+      "sender": "user",
+      "text": "whats my name?",
+      "timestamp": "2026-06-22T22:49:06.472956"
+    }
+  ],
+  "last_active_date": "2026-06-22"
+}

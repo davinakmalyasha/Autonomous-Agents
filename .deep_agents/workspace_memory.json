@@ -1,5 +1,12 @@
 {
-    "past_requests": [],
+    "past_requests": [
+        "hy?",
+        "yeah i asked you",
+        "yeah anwer my question",
+        "my name?",
+        "my name is davin",
+        "whats my name?"
+    ],
     "lessons_learned": [],
     "global": {
         "preferences": {}
@@ -24,7 +31,8 @@
                 "version": "Composer version 2.8.2 2024-10-29 16:12:11"
             },
             "npm": {
-                "available": false
+                "available": true,
+                "version": "11.0.0"
             },
             "php": {
                 "available": true,
@@ -44,11 +52,12 @@
             }
         },
         "ports": {
-            "8000": "FREE",
+            "8000": "IN_USE",
             "3000": "FREE",
             "5173": "FREE",
-            "8080": "IN_USE"
+            "8080": "FREE"
         },
-        "timestamp": "2026-06-21T20:57:17.401657"
-    }
+        "timestamp": "2026-06-22T22:49:11.244320"
+    },
+    "project_path": "d:\\MyProject\\LangChain"
 }

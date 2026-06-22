@@ -1,9 +1,9 @@
 {
-  "total_input_tokens": 1566,
-  "total_output_tokens": 152,
-  "total_cache_hit_tokens": 0,
-  "total_cache_miss_tokens": 1566,
-  "total_cost": 0.0002618,
+  "total_input_tokens": 30866,
+  "total_output_tokens": 1198,
+  "total_cache_hit_tokens": 28544,
+  "total_cache_miss_tokens": 2322,
+  "total_cost": 0.0010601360000000002,
   "calls": [
     {
       "agent": "JarvisRouter",
@@ -15,6 +15,61 @@
       "cost": 0.000262,
       "timestamp": "06:57:05",
       "where": "Routing user request"
+    },
+    {
+      "agent": "ChatSummarizer",
+      "model": "deepseek-v4-flash",
+      "input": 163,
+      "output": 212,
+      "cache_hits": 0,
+      "cache_misses": 163,
+      "cost": 8.2e-05,
+      "timestamp": "20:17:34",
+      "where": "Executing coding agent loop"
+    },
+    {
+      "agent": "Orchestrator",
+      "model": "deepseek-v4-flash",
+      "input": 7159,
+      "output": 280,
+      "cache_hits": 7040,
+      "cache_misses": 119,
+      "cost": 0.000194,
+      "timestamp": "20:17:45",
+      "where": "Executing coding agent loop"
+    },
+    {
+      "agent": "Orchestrator",
+      "model": "deepseek-v4-flash",
+      "input": 7274,
+      "output": 48,
+      "cache_hits": 7040,
+      "cache_misses": 234,
+      "cost": 0.000145,
+      "timestamp": "20:17:47",
+      "where": "Executing coding agent loop"
+    },
+    {
+      "agent": "Orchestrator",
+      "model": "deepseek-v4-flash",
+      "input": 7323,
+      "output": 154,
+      "cache_hits": 7168,
+      "cache_misses": 155,
+      "cost": 0.000165,
+      "timestamp": "20:17:51",
+      "where": "Executing coding agent loop"
+    },
+    {
+      "agent": "Orchestrator",
+      "model": "deepseek-v4-flash",
+      "input": 7381,
+      "output": 352,
+      "cache_hits": 7296,
+      "cache_misses": 85,
+      "cost": 0.000213,
+      "timestamp": "20:17:55",
+      "where": "Executing coding agent loop"
     }
   ]
 }

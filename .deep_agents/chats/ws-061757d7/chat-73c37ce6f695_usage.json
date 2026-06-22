@@ -1,0 +1,174 @@
+{
+  "total_input_tokens": 91031,
+  "total_output_tokens": 6225,
+  "total_cache_hit_tokens": 69376,
+  "total_cache_miss_tokens": 21655,
+  "total_cost": 0.005745964,
+  "calls": [
+    {
+      "agent": "Orchestrator",
+      "model": "deepseek-v4-flash",
+      "input": 7156,
+      "output": 162,
+      "cache_hits": 7040,
+      "cache_misses": 116,
+      "cost": 0.00016,
+      "timestamp": "20:50:16",
+      "where": "Executing coding agent loop"
+    },
+    {
+      "agent": "Orchestrator",
+      "model": "deepseek-v4-flash",
+      "input": 7159,
+      "output": 744,
+      "cache_hits": 7040,
+      "cache_misses": 119,
+      "cost": 0.000324,
+      "timestamp": "21:27:12",
+      "where": "Executing coding agent loop"
+    },
+    {
+      "agent": "BA",
+      "model": "deepseek-v4-flash",
+      "input": 590,
+      "output": 95,
+      "cache_hits": 384,
+      "cache_misses": 206,
+      "cost": 6.1e-05,
+      "timestamp": "21:27:14",
+      "where": "Executing coding agent loop"
+    },
+    {
+      "agent": "BA",
+      "model": "deepseek-v4-flash",
+      "input": 2423,
+      "output": 418,
+      "cache_hits": 512,
+      "cache_misses": 1911,
+      "cost": 0.000392,
+      "timestamp": "21:27:18",
+      "where": "Executing coding agent loop"
+    },
+    {
+      "agent": "Orchestrator",
+      "model": "deepseek-v4-flash",
+      "input": 7160,
+      "output": 955,
+      "cache_hits": 7040,
+      "cache_misses": 120,
+      "cost": 0.000383,
+      "timestamp": "21:27:26",
+      "where": "Executing coding agent loop"
+    },
+    {
+      "agent": "BA",
+      "model": "deepseek-v4-flash",
+      "input": 579,
+      "output": 201,
+      "cache_hits": 384,
+      "cache_misses": 195,
+      "cost": 8.9e-05,
+      "timestamp": "21:27:29",
+      "where": "Executing coding agent loop"
+    },
+    {
+      "agent": "BA",
+      "model": "deepseek-v4-flash",
+      "input": 10652,
+      "output": 1274,
+      "cache_hits": 2304,
+      "cache_misses": 8348,
+      "cost": 0.001558,
+      "timestamp": "21:27:34",
+      "where": "Executing coding agent loop"
+    },
+    {
+      "agent": "BA",
+      "model": "deepseek-v4-flash",
+      "input": 1553,
+      "output": 463,
+      "cache_hits": 512,
+      "cache_misses": 1041,
+      "cost": 0.000283,
+      "timestamp": "21:27:35",
+      "where": "Executing coding agent loop"
+    },
+    {
+      "agent": "BA",
+      "model": "deepseek-v4-flash",
+      "input": 14926,
+      "output": 272,
+      "cache_hits": 10624,
+      "cache_misses": 4302,
+      "cost": 0.000827,
+      "timestamp": "21:27:38",
+      "where": "Executing coding agent loop"
+    },
+    {
+      "agent": "BA",
+      "model": "deepseek-v4-flash",
+      "input": 3880,
+      "output": 307,
+      "cache_hits": 1536,
+      "cache_misses": 2344,
+      "cost": 0.000436,
+      "timestamp": "21:27:39",
+      "where": "Executing coding agent loop"
+    },
+    {
+      "agent": "BA",
+      "model": "deepseek-v4-flash",
+      "input": 5586,
+      "output": 635,
+      "cache_hits": 3840,
+      "cache_misses": 1746,
+      "cost": 0.000476,
+      "timestamp": "21:27:48",
+      "where": "Executing coding agent loop"
+    },
+    {
+      "agent": "Orchestrator",
+      "model": "deepseek-v4-flash",
+      "input": 7892,
+      "output": 192,
+      "cache_hits": 7040,
+      "cache_misses": 852,
+      "cost": 0.000272,
+      "timestamp": "21:27:51",
+      "where": "Executing coding agent loop"
+    },
+    {
+      "agent": "Orchestrator",
+      "model": "deepseek-v4-flash",
+      "input": 7157,
+      "output": 108,
+      "cache_hits": 7040,
+      "cache_misses": 117,
+      "cost": 0.000145,
+      "timestamp": "22:40:54",
+      "where": "Executing coding agent loop"
+    },
+    {
+      "agent": "Orchestrator",
+      "model": "deepseek-v4-flash",
+      "input": 7159,
+      "output": 176,
+      "cache_hits": 7040,
+      "cache_misses": 119,
+      "cost": 0.000165,
+      "timestamp": "22:48:55",
+      "where": "Executing coding agent loop"
+    },
+    {
+      "agent": "Orchestrator",
+      "model": "deepseek-v4-flash",
+      "input": 7159,
+      "output": 223,
+      "cache_hits": 7040,
+      "cache_misses": 119,
+      "cost": 0.000178,
+      "timestamp": "22:49:14",
+      "where": "Executing coding agent loop"
+    }
+  ]
+}

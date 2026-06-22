@@ -1,0 +1,302 @@
+[FILE] d:\MyProject\LangChain\api_server.py (lines 1-300 of 521)
+[NOTE: Showing first 300 of 521 lines. Use offset/limit to read more.]
+"""
+FastAPI server — Bridges the React frontend with the LangGraph multi-agent pipeline.
+Replaces the Gradio dashboard with SSE streaming endpoints.
+"""
+import os
+import asyncio
+import json
+import threading
+import time
+import queue
+from typing import AsyncGenerator
+
+from fastapi import FastAPI, Request
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import StreamingResponse, JSONResponse
+from pydantic import BaseModel
+from dotenv import load_dotenv
+
+from sync_manager import run_and_sync_graph
+from state_sync import shared_state, safe_get_state, safe_update_state, safe_serialize_state, state_lock
+import workspace_manager as wm
+
+load_dotenv()
+
+# Init default workspace on startup
+wm.init_default_workspace()
+
+app = FastAPI(title="Deep Agents API", version="2.0")
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+
+# ── Models ──────────────────────────────────────────────────────────────────
+
+class RunRequest(BaseModel):
+    prompt: str
+    model: str = "Automatic Fallback"
+    temperature: float = 0.7
+    workspace_path: str = ""
+    chat_id: str = ""
+
+class ChatRequest(BaseModel):
+    prompt: str
+
+
+# ── SSE Helpers ─────────────────────────────────────────────────────────────
+
+def _format_sse(event: str, data: dict) -> str:
+    """Format a Server-Sent Event."""
+    return f"event: {event}\ndata: {json.dumps(data)}\n\n"
+
+
+# ── Routes ──────────────────────────────────────────────────────────────────
+
+@app.get("/api/state")
+async def get_state():
+    """Return the current shared state as JSON."""
+    return JSONResponse(content=json.loads(safe_serialize_state()))
+
+
+def _save_chat_token_usage(workspace_path: str, chat_id: str):
+    if not chat_id or not workspace_path:
+        return
+    try:
+        chat = wm.get_chat(workspace_path, chat_id, include_traces=False, include_usage=True)
+        if chat:
+            run_stats = safe_get_state().get("token_usage", {})
+            chat_stats = chat.get("token_usage") or {
+                "total_input_tokens": 0,
+                "total_output_tokens": 0,
+                "total_cache_hit_tokens": 0,
+                "total_cache_miss_tokens": 0,
+                "total_cost": 0.0,
+                "calls": []
+            }
+            if "total_cache_hit_tokens" not in chat_stats:
+                chat_stats["total_cache_hit_tokens"] = 0
+            if "total_cache_miss_tokens" not in chat_stats:
+                chat_stats["total_cache_miss_tokens"] = 0
+            chat_stats["total_input_tokens"] += run_stats.get("total_input_tokens", 0)
+            chat_stats["total_output_tokens"] += run_stats.get("total_output_tokens", 0)
+            chat_stats["total_cache_hit_tokens"] += run_stats.get("total_cache_hit_tokens", 0)
+            chat_stats["total_cache_miss_tokens"] += run_stats.get("total_cache_miss_tokens", 0)
+            chat_stats["total_cost"] += run_stats.get("total_cost", 0.0)
+            chat_stats["calls"] = chat_stats.get("calls", []) + run_stats.get("calls", [])
+            chat["token_usage"] = chat_stats
+            wm.save_chat(workspace_path, chat_id, chat)
+    except Exception as e:
+        print(f"Error saving token stats for chat {chat_id}: {e}")
+
+
+# ── Simple chat keywords (costs nothing, no LLM call needed) ──
+_CHAT_KEYWORDS = {"hello", "hi", "hey", "thanks", "thank you", "good morning",
+                  "good afternoon", "how are you", "what's up", "bye", "goodbye"}
+
+def _is_obvious_chat(text: str) -> bool:
+    """Quick keyword check — true if it's clearly just a greeting/thanks, not a task."""
+    import re
+    text_lower = text.lower().strip()
+    words = text_lower.rstrip(".!?").split()
+    if len(words) > 6:
+        return False
+    
+    # Greetings & thanks keyword check with word boundaries to avoid substring matches
+    greetings = [
+        r"\bhello\b", r"\bhi\b", r"\bhey\b", r"\bthanks\b", r"\bthank\s+you\b",
+        r"\bgood\s+morning\b", r"\bgood\s+afternoon\b", r"\bhow\s+are\s+you\b",
+        r"\bwhat's\s+up\b", r"\bbye\b", r"\bgoodbye\b"
+    ]
+    has_greeting = any(re.search(pattern, text_lower) for pattern in greetings)
+    if not has_greeting:
+        return False
+
+    # Ensure it doesn't contain any task action words
+    actions = [
+        "build", "create", "make", "write", "code", "fix", "implement",
+        "add", "change", "modify", "delete", "remove", "refactor", "deploy",
+        "run", "test"
+    ]
+    has_action = any(re.search(rf"\b{act}\b", text_lower) for act in actions)
+    return not has_action
+
+
+@app.post("/api/run")
+async def run_pipeline(req: RunRequest, request: Request):
+    """Run the agentic pipeline with SSE streaming of state updates.
+    No Jarvis Router — goes directly to the main agent."""
+    from chat_memory_manager import add_chat_message, resolve_request_text
+
+    # Clear previous failed models and reset current run token usage
+    safe_update_state({
+        "selected_model": req.model,
+        "selected_temp": req.temperature,
+        "failed_models": [],
+        "token_usage": {
+            "total_input_tokens": 0,
+            "total_output_tokens": 0,
+            "total_cache_hit_tokens": 0,
+            "total_cache_miss_tokens": 0,
+            "total_cost": 0.0,
+            "calls": [],
+        }
+    })
+
+    add_chat_message("user", req.prompt, workspace_path=req.workspace_path, chat_id=req.chat_id)
+    resolved = resolve_request_text(req.prompt, workspace_path=req.workspace_path, chat_id=req.chat_id)
+
+    # Quick chat check — no LLM call needed for greetings
+    if _is_obvious_chat(req.prompt):
+        _save_chat_token_usage(req.workspace_path, req.chat_id)
+        safe_update_state({
+            "active_node": "agent",
+            "next_agent": "",
+            "completed_nodes": [],
+            "thoughts": {"agent": "Ready and waiting for instructions."},
+            "client_request": resolved,
+            "outputs": {
+                "requirements": "", "tech_spec": "", "code": "",
+                "test_report": "", "devops_config": "", "analytics_report": "",
+                "gherkin": "", "mermaid": "",
+            },
+            "deep_agents_log": [],
+            "live_terminal_log": f"👤 User: {req.prompt}\n\n🤖 Assistant: Hi! Ready to help. What do you need?\n",
+        })
+
+        async def chat_stream() -> AsyncGenerator[str, None]:
+            if await request.is_disconnected():
+                return
+            yield _format_sse("state", json.loads(safe_serialize_state()))
+            yield _format_sse("done", {"status": "complete"})
+
+        return StreamingResponse(chat_stream(), media_type="text/event-stream")
+
+    # Go directly to the main agent
+    async def build_stream() -> AsyncGenerator[str, None]:
+        """Stream state updates from the LangGraph pipeline via SSE.
+        Yields graph-level events AND periodic intermediate snapshots during
+        Developer tool-using loops so the frontend shows thoughts in real-time."""
+        done = False
+        had_error = False
+        last_log_len = 0
+        cancel_event = threading.Event()
+
+        def run_in_thread():
+            nonlocal done, had_error
+            try:
+                for state_snapshot in run_and_sync_graph(resolved, workspace_path=req.workspace_path, chat_id=req.chat_id, cancel_event=cancel_event):
+                    q.put(state_snapshot)
+                q.put(None)  # signal completion
+            except Exception as e:
+                had_error = True
+                q.put({"error": str(e)})
+                q.put(None)
+            finally:
+                done = True
+
+        q: queue.Queue = queue.Queue()
+        thread = threading.Thread(target=run_in_thread, daemon=True)
+        thread.start()
+
+        last_ver = 0
+        while not done or not q.empty():
+            if await request.is_disconnected():
+                cancel_event.set()  # Signal the graph thread to stop
+                break
+            try:
+                item = q.get(timeout=0.05)
+                if item is None:
+                    break
+                if isinstance(item, dict):
+                    yield _format_sse("state", item)
+                    last_ver = item.get("state_version", 0)
+            except queue.Empty:
+                if not done:
+                    snap = json.loads(safe_serialize_state())
+                    cur_ver = snap.get("state_version", 0)
+                    if cur_ver > last_ver:
+                        last_ver = cur_ver
+                        snap["_intermediate"] = True
+                        yield _format_sse("state", snap)
+                await asyncio.sleep(0.05)
+
+        # Save token usage for the chat
+        _save_chat_token_usage(req.workspace_path, req.chat_id)
+
+        # Final state
+        yield _format_sse("state", json.loads(safe_serialize_state()))
+        yield _format_sse("done", {"status": "error" if had_error else "complete"})
+
+    return StreamingResponse(build_stream(), media_type="text/event-stream")
+
+
+@app.post("/api/session/reset")
+async def reset_session():
+    """Reset the shared state for a new session."""
+    empty_outputs = {
+        "requirements": "", "tech_spec": "", "code": "",
+        "test_report": "", "devops_config": "", "analytics_report": "",
+        "gherkin": "", "mermaid": "",
+    }
+    safe_update_state({
+        "active_node": "",
+        "next_agent": "",
+        "completed_nodes": [],
+        "thoughts": {
+            "supervisor": "", "developer": "",
+        },
+        "client_request": "",
+        "outputs": empty_outputs,
+        "project_path": "",
+        "agents_plan": "",
+        "deep_agents_log": [],
+        "live_terminal_log": "🧹 Session reset. Ready for a new request.\n",
+        "token_usage": {
+            "total_input_tokens": 0,
+            "total_output_tokens": 0,
+            "total_cache_hit_tokens": 0,
+            "total_cache_miss_tokens": 0,
+            "total_cost": 0.0,
+            "calls": [],
+        },
+    })
+    return JSONResponse(content={"status": "ok"})
+
+
+@app.get("/api/history")
+async def get_history():
+    """Return recent prompt history."""
+    try:
+        from chat_memory_manager import load_chat_memory
+        mem = load_chat_memory()
+        messages = mem.get("current_day_messages", [])
+        user_prompts = [m["text"] for m in messages if m.get("sender") == "user"]
+        seen = set()
+        user_prompts = [x for x in user_prompts if not (x in seen or seen.add(x))]
+        return JSONResponse(content={"prompts": user_prompts[:10] if user_prompts else ["No recent prompts"]})
+    except Exception:
+        return JSONResponse(content={"prompts": ["No recent prompts"]})
+
+
+@app.get("/api/models")
+async def get_models():
+    """Return available model list."""
+    return JSONResponse(content={
+        "models": [
+            {"id": "Automatic Fallback", "name": "Automatic Fallback", "provider": "auto"},
+            {"id": "deepseek/deepseek-v4-flash-20260423:free", "name": "DeepSeek V4 Flash (Free)", "provider": "openrouter"},
+            {"id": "deepseek/deepseek-chat", "name": "DeepSeek Chat", "provider": "openrouter"},
+            {"id": "deepseek/deepseek-r1", "name": "DeepSeek R1", "provider": "openrouter"},
+            {"id": "openrouter/owl-alpha", "name": "Owl Alpha (OpenRouter)", "provider": "openrouter"},
+            {"id": "qwen/qwen3-coder-480b-a35b-07-25:free", "name": "Qwen Coder 480B (Free)", "provider": "openrouter"},
+            {"id": "nvidia/nemotron-3-ultra-550b-a55b:free", "name": "Nemotron Ultra 550B (Free)", "provider": "openrouter"},
+            {"id": "google/gemma-4-31b-it:free", "name": "Gemma 4 31B (Free)", "provider": "openrouter"},
+            {"id": "openai/gpt-oss-120b:free", "name": "GPT-OSS 120B (Free)", "provider": "openrouter"},
+            {"id": "openai/gpt-oss-20b:free", "name": "GPT-OSS 20B (Free)", "provider": "openrouter"},

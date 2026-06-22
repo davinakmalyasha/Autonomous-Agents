@@ -1,0 +1,483 @@
+FullName                                                                                             Length
+--------                                                                                             ------
+D:\MyProject\TestProjectForAgent\.deep_agents
+D:\MyProject\TestProjectForAgent\.deep_agents\chats
+D:\MyProject\TestProjectForAgent\.deep_agents\task_unit-chat-20-1782089553.json                      89130
+D:\MyProject\TestProjectForAgent\.deep_agents\workspace_memory.json                                  2523
+D:\MyProject\TestProjectForAgent\assets
+D:\MyProject\TestProjectForAgent\assets\placeholder-avatar.svg                                       529
+D:\MyProject\TestProjectForAgent\css
+D:\MyProject\TestProjectForAgent\css\style.css                                                       25777
+D:\MyProject\TestProjectForAgent\js
+D:\MyProject\TestProjectForAgent\js\main.js                                                          10823
+D:\MyProject\TestProjectForAgent\node_modules
+D:\MyProject\TestProjectForAgent\node_modules\.bin
+D:\MyProject\TestProjectForAgent\node_modules\.bin\prebuild-install                                  395
+D:\MyProject\TestProjectForAgent\node_modules\.bin\prebuild-install.cmd                              328
+D:\MyProject\TestProjectForAgent\node_modules\.bin\prebuild-install.ps1                              817
+D:\MyProject\TestProjectForAgent\node_modules\.bin\rc                                                367
+D:\MyProject\TestProjectForAgent\node_modules\.bin\rc.cmd                                            314
+D:\MyProject\TestProjectForAgent\node_modules\.bin\rc.ps1                                            761
+D:\MyProject\TestProjectForAgent\node_modules\.bin\semver                                            389
+D:\MyProject\TestProjectForAgent\node_modules\.bin\semver.cmd                                        325
+D:\MyProject\TestProjectForAgent\node_modules\.bin\semver.ps1                                        805
+D:\MyProject\TestProjectForAgent\node_modules\base64-js
+D:\MyProject\TestProjectForAgent\node_modules\base64-js\base64js.min.js                              2192
+D:\MyProject\TestProjectForAgent\node_modules\base64-js\index.d.ts                                   161
+D:\MyProject\TestProjectForAgent\node_modules\base64-js\index.js                                     3932
+D:\MyProject\TestProjectForAgent\node_modules\base64-js\LICENSE                                      1081
+D:\MyProject\TestProjectForAgent\node_modules\base64-js\package.json                                 1115
+D:\MyProject\TestProjectForAgent\node_modules\base64-js\README.md                                    1143
+D:\MyProject\TestProjectForAgent\node_modules\better-sqlite3
+D:\MyProject\TestProjectForAgent\node_modules\better-sqlite3\build
+D:\MyProject\TestProjectForAgent\node_modules\better-sqlite3\build\Release
+D:\MyProject\TestProjectForAgent\node_modules\better-sqlite3\build\Release\better_sqlite3.node       1919488
+D:\MyProject\TestProjectForAgent\node_modules\better-sqlite3\deps
+D:\MyProject\TestProjectForAgent\node_modules\better-sqlite3\deps\patches
+D:\MyProject\TestProjectForAgent\node_modules\better-sqlite3\deps\patches\1208.patch                 597
+D:\MyProject\TestProjectForAgent\node_modules\better-sqlite3\deps\sqlite3
+D:\MyProject\TestProjectForAgent\node_modules\better-sqlite3\deps\sqlite3\sqlite3.c                  9507980
+D:\MyProject\TestProjectForAgent\node_modules\better-sqlite3\deps\sqlite3\sqlite3.h                  690725
+D:\MyProject\TestProjectForAgent\node_modules\better-sqlite3\deps\sqlite3\sqlite3ext.h               39175
+D:\MyProject\TestProjectForAgent\node_modules\better-sqlite3\deps\common.gypi                        1584
+D:\MyProject\TestProjectForAgent\node_modules\better-sqlite3\deps\copy.js                            897
+D:\MyProject\TestProjectForAgent\node_modules\better-sqlite3\deps\defines.gypi                       1160
+D:\MyProject\TestProjectForAgent\node_modules\better-sqlite3\deps\download.sh                        3913
+D:\MyProject\TestProjectForAgent\node_modules\better-sqlite3\deps\sqlite3.gyp                        2542
+D:\MyProject\TestProjectForAgent\node_modules\better-sqlite3\deps\test_extension.c                   587
+D:\MyProject\TestProjectForAgent\node_modules\better-sqlite3\lib
+D:\MyProject\TestProjectForAgent\node_modules\better-sqlite3\lib\methods
+D:\MyProject\TestProjectForAgent\node_modules\better-sqlite3\lib\methods\aggregate.js                1932
+D:\MyProject\TestProjectForAgent\node_modules\better-sqlite3\lib\methods\backup.js                   2380
+D:\MyProject\TestProjectForAgent\node_modules\better-sqlite3\lib\methods\function.js                 1396
+D:\MyProject\TestProjectForAgent\node_modules\better-sqlite3\lib\methods\inspect.js                  174
+D:\MyProject\TestProjectForAgent\node_modules\better-sqlite3\lib\methods\pragma.js                   536
+D:\MyProject\TestProjectForAgent\node_modules\better-sqlite3\lib\methods\serialize.js                625
+D:\MyProject\TestProjectForAgent\node_modules\better-sqlite3\lib\methods\table.js                    7144
+D:\MyProject\TestProjectForAgent\node_modules\better-sqlite3\lib\methods\transaction.js              2792
+D:\MyProject\TestProjectForAgent\node_modules\better-sqlite3\lib\methods\wrappers.js                 1145
+D:\MyProject\TestProjectForAgent\node_modules\better-sqlite3\lib\database.js                         4149
+D:\MyProject\TestProjectForAgent\node_modules\better-sqlite3\lib\index.js                            110
+D:\MyProject\TestProjectForAgent\node_modules\better-sqlite3\lib\sqlite-error.js                     717
+D:\MyProject\TestProjectForAgent\node_modules\better-sqlite3\lib\util.js                             331
+D:\MyProject\TestProjectForAgent\node_modules\better-sqlite3\src
+D:\MyProject\TestProjectForAgent\node_modules\better-sqlite3\src\objects
+D:\MyProject\TestProjectForAgent\node_modules\better-sqlite3\src\objects\backup.cpp                  4146
+D:\MyProject\TestProjectForAgent\node_modules\better-sqlite3\src\objects\backup.hpp                  705
+D:\MyProject\TestProjectForAgent\node_modules\better-sqlite3\src\objects\database.cpp                14198
+D:\MyProject\TestProjectForAgent\node_modules\better-sqlite3\src\objects\database.hpp                3129
+D:\MyProject\TestProjectForAgent\node_modules\better-sqlite3\src\objects\statement-iterator.cpp      3339
+D:\MyProject\TestProjectForAgent\node_modules\better-sqlite3\src\objects\statement-iterator.hpp      1391
+D:\MyProject\TestProjectForAgent\node_modules\better-sqlite3\src\objects\statement.cpp               13173
+D:\MyProject\TestProjectForAgent\node_modules\better-sqlite3\src\objects\statement.hpp               1373
+D:\MyProject\TestProjectForAgent\node_modules\better-sqlite3\src\util
+D:\MyProject\TestProjectForAgent\node_modules\better-sqlite3\src\util\bind-map.cpp                   1587
+D:\MyProject\TestProjectForAgent\node_modules\better-sqlite3\src\util\binder.cpp                     6060
+D:\MyProject\TestProjectForAgent\node_modules\better-sqlite3\src\util\constants.cpp                  9068
+D:\MyProject\TestProjectForAgent\node_modules\better-sqlite3\src\util\custom-aggregate.cpp           3952
+D:\MyProject\TestProjectForAgent\node_modules\better-sqlite3\src\util\custom-function.cpp            1550
+D:\MyProject\TestProjectForAgent\node_modules\better-sqlite3\src\util\custom-table.cpp               14960
+D:\MyProject\TestProjectForAgent\node_modules\better-sqlite3\src\util\data-converter.cpp             460
+D:\MyProject\TestProjectForAgent\node_modules\better-sqlite3\src\util\data.cpp                       9639
+D:\MyProject\TestProjectForAgent\node_modules\better-sqlite3\src\util\helpers.cpp                    4439
+D:\MyProject\TestProjectForAgent\node_modules\better-sqlite3\src\util\macros.cpp                     4574
+D:\MyProject\TestProjectForAgent\node_modules\better-sqlite3\src\util\query-macros.cpp               4138
+D:\MyProject\TestProjectForAgent\node_modules\better-sqlite3\src\util\row-builder.cpp                1017
+D:\MyProject\TestProjectForAgent\node_modules\better-sqlite3\src\addon.cpp                           1283
+D:\MyProject\TestProjectForAgent\node_modules\better-sqlite3\src\better_sqlite3.cpp                  2851
+D:\MyProject\TestProjectForAgent\node_modules\better-sqlite3\binding.gyp                             942
+D:\MyProject\TestProjectForAgent\node_modules\better-sqlite3\LICENSE                                 1078
+D:\MyProject\TestProjectForAgent\node_modules\better-sqlite3\package.json                            1436
+D:\MyProject\TestProjectForAgent\node_modules\better-sqlite3\README.md                               5666
+D:\MyProject\TestProjectForAgent\node_modules\bindings
+D:\MyProject\TestProjectForAgent\node_modules\bindings\bindings.js                                   5986
+D:\MyProject\TestProjectForAgent\node_modules\bindings\LICENSE.md                                    1108
+D:\MyProject\TestProjectForAgent\node_modules\bindings\package.json                                  660
+D:\MyProject\TestProjectForAgent\node_modules\bindings\README.md                                     3476
+D:\MyProject\TestProjectForAgent\node_modules\bl
+D:\MyProject\TestProjectForAgent\node_modules\bl\test
+D:\MyProject\TestProjectForAgent\node_modules\bl\test\convert.js                                     609
+D:\MyProject\TestProjectForAgent\node_modules\bl\test\indexOf.js                                     15130
+D:\MyProject\TestProjectForAgent\node_modules\bl\test\isBufferList.js                                564
+D:\MyProject\TestProjectForAgent\node_modules\bl\test\test.js                                        21519
+D:\MyProject\TestProjectForAgent\node_modules\bl\.travis.yml                                         201
+D:\MyProject\TestProjectForAgent\node_modules\bl\bl.js                                               2043
+D:\MyProject\TestProjectForAgent\node_modules\bl\BufferList.js                                       9524
+D:\MyProject\TestProjectForAgent\node_modules\bl\LICENSE.md                                          1216
+D:\MyProject\TestProjectForAgent\node_modules\bl\package.json                                        964
+D:\MyProject\TestProjectForAgent\node_modules\bl\README.md                                           12657
+D:\MyProject\TestProjectForAgent\node_modules\buffer
+D:\MyProject\TestProjectForAgent\node_modules\buffer\AUTHORS.md                                      2672
+D:\MyProject\TestProjectForAgent\node_modules\buffer\index.d.ts                                      8755
+D:\MyProject\TestProjectForAgent\node_modules\buffer\index.js                                        50097
+D:\MyProject\TestProjectForAgent\node_modules\buffer\LICENSE                                         1106
+D:\MyProject\TestProjectForAgent\node_modules\buffer\package.json                                    2597
+D:\MyProject\TestProjectForAgent\node_modules\buffer\README.md                                       17300
+D:\MyProject\TestProjectForAgent\node_modules\chownr
+D:\MyProject\TestProjectForAgent\node_modules\chownr\chownr.js                                       4275
+D:\MyProject\TestProjectForAgent\node_modules\chownr\LICENSE                                         765
+D:\MyProject\TestProjectForAgent\node_modules\chownr\package.json                                    610
+D:\MyProject\TestProjectForAgent\node_modules\chownr\README.md                                       59
+D:\MyProject\TestProjectForAgent\node_modules\decompress-response
+D:\MyProject\TestProjectForAgent\node_modules\decompress-response\index.d.ts                         542
+D:\MyProject\TestProjectForAgent\node_modules\decompress-response\index.js                           1320
+D:\MyProject\TestProjectForAgent\node_modules\decompress-response\license                            1117
+D:\MyProject\TestProjectForAgent\node_modules\decompress-response\package.json                       985
+D:\MyProject\TestProjectForAgent\node_modules\decompress-response\readme.md                          1508
+D:\MyProject\TestProjectForAgent\node_modules\deep-extend
+D:\MyProject\TestProjectForAgent\node_modules\deep-extend\lib
+D:\MyProject\TestProjectForAgent\node_modules\deep-extend\lib\deep-extend.js                         4293
+D:\MyProject\TestProjectForAgent\node_modules\deep-extend\CHANGELOG.md                               1155
+D:\MyProject\TestProjectForAgent\node_modules\deep-extend\index.js                                   47
+D:\MyProject\TestProjectForAgent\node_modules\deep-extend\LICENSE                                    1093
+D:\MyProject\TestProjectForAgent\node_modules\deep-extend\package.json                               1312
+D:\MyProject\TestProjectForAgent\node_modules\deep-extend\README.md                                  1290
+D:\MyProject\TestProjectForAgent\node_modules\detect-libc
+D:\MyProject\TestProjectForAgent\node_modules\detect-libc\lib
+D:\MyProject\TestProjectForAgent\node_modules\detect-libc\lib\detect-libc.js                         7503
+D:\MyProject\TestProjectForAgent\node_modules\detect-libc\lib\elf.js                                 982
+D:\MyProject\TestProjectForAgent\node_modules\detect-libc\lib\filesystem.js                          1097
+D:\MyProject\TestProjectForAgent\node_modules\detect-libc\lib\process.js                             569
+D:\MyProject\TestProjectForAgent\node_modules\detect-libc\index.d.ts                                 436
+D:\MyProject\TestProjectForAgent\node_modules\detect-libc\LICENSE                                    11357
+D:\MyProject\TestProjectForAgent\node_modules\detect-libc\package.json                               1278
+D:\MyProject\TestProjectForAgent\node_modules\detect-libc\README.md                                  3215
+D:\MyProject\TestProjectForAgent\node_modules\end-of-stream
+D:\MyProject\TestProjectForAgent\node_modules\end-of-stream\index.js                                 2739
+D:\MyProject\TestProjectForAgent\node_modules\end-of-stream\LICENSE                                  1078
+D:\MyProject\TestProjectForAgent\node_modules\end-of-stream\package.json                             777
+D:\MyProject\TestProjectForAgent\node_modules\end-of-stream\README.md                                1701
+D:\MyProject\TestProjectForAgent\node_modules\expand-template
+D:\MyProject\TestProjectForAgent\node_modules\expand-template\.travis.yml                            47
+D:\MyProject\TestProjectForAgent\node_modules\expand-template\index.js                               672
+D:\MyProject\TestProjectForAgent\node_modules\expand-template\LICENSE                                1082
+D:\MyProject\TestProjectForAgent\node_modules\expand-template\package.json                           647
+D:\MyProject\TestProjectForAgent\node_modules\expand-template\README.md                              1200
+D:\MyProject\TestProjectForAgent\node_modules\expand-template\test.js                                1762
+D:\MyProject\TestProjectForAgent\node_modules\file-uri-to-path
+D:\MyProject\TestProjectForAgent\node_modules\file-uri-to-path\test
+D:\MyProject\TestProjectForAgent\node_modules\file-uri-to-path\test\test.js                          666
+D:\MyProject\TestProjectForAgent\node_modules\file-uri-to-path\test\tests.json                       810
+D:\MyProject\TestProjectForAgent\node_modules\file-uri-to-path\.npmignore                            14
+D:\MyProject\TestProjectForAgent\node_modules\file-uri-to-path\.travis.yml                           472
+D:\MyProject\TestProjectForAgent\node_modules\file-uri-to-path\History.md                            433
+D:\MyProject\TestProjectForAgent\node_modules\file-uri-to-path\index.d.ts                            77
+D:\MyProject\TestProjectForAgent\node_modules\file-uri-to-path\index.js                              1723
+D:\MyProject\TestProjectForAgent\node_modules\file-uri-to-path\LICENSE                               1083
+D:\MyProject\TestProjectForAgent\node_modules\file-uri-to-path\package.json                          717
+D:\MyProject\TestProjectForAgent\node_modules\file-uri-to-path\README.md                             2073
+D:\MyProject\TestProjectForAgent\node_modules\fs-constants
+D:\MyProject\TestProjectForAgent\node_modules\fs-constants\browser.js                                38
+D:\MyProject\TestProjectForAgent\node_modules\fs-constants\index.js                                  65
+D:\MyProject\TestProjectForAgent\node_modules\fs-constants\LICENSE                                   1079
+D:\MyProject\TestProjectForAgent\node_modules\fs-constants\package.json                              513
+D:\MyProject\TestProjectForAgent\node_modules\fs-constants\README.md                                 528
+D:\MyProject\TestProjectForAgent\node_modules\github-from-package
+D:\MyProject\TestProjectForAgent\node_modules\github-from-package\example
+D:\MyProject\TestProjectForAgent\node_modules\github-from-package\example\package.json               143
+D:\MyProject\TestProjectForAgent\node_modules\github-from-package\example\url.js                     92
+D:\MyProject\TestProjectForAgent\node_modules\github-from-package\test
+D:\MyProject\TestProjectForAgent\node_modules\github-from-package\test\a.json                        143
+D:\MyProject\TestProjectForAgent\node_modules\github-from-package\test\b.json                        106
+D:\MyProject\TestProjectForAgent\node_modules\github-from-package\test\c.json                        110
+D:\MyProject\TestProjectForAgent\node_modules\github-from-package\test\d.json                        123
+D:\MyProject\TestProjectForAgent\node_modules\github-from-package\test\e.json                        110
+D:\MyProject\TestProjectForAgent\node_modules\github-from-package\test\url.js                        611
+D:\MyProject\TestProjectForAgent\node_modules\github-from-package\.travis.yml                        43
+D:\MyProject\TestProjectForAgent\node_modules\github-from-package\index.js                           406
+D:\MyProject\TestProjectForAgent\node_modules\github-from-package\LICENSE                            1073
+D:\MyProject\TestProjectForAgent\node_modules\github-from-package\package.json                       753
+D:\MyProject\TestProjectForAgent\node_modules\github-from-package\readme.markdown                    895
+D:\MyProject\TestProjectForAgent\node_modules\ieee754
+D:\MyProject\TestProjectForAgent\node_modules\ieee754\index.d.ts                                     332
+D:\MyProject\TestProjectForAgent\node_modules\ieee754\index.js                                       2154
+D:\MyProject\TestProjectForAgent\node_modules\ieee754\LICENSE                                        1465
+D:\MyProject\TestProjectForAgent\node_modules\ieee754\package.json                                   1194
+D:\MyProject\TestProjectForAgent\node_modules\ieee754\README.md                                      1651
+D:\MyProject\TestProjectForAgent\node_modules\inherits
+D:\MyProject\TestProjectForAgent\node_modules\inherits\inherits.js                                   250
+D:\MyProject\TestProjectForAgent\node_modules\inherits\inherits_browser.js                           753
+D:\MyProject\TestProjectForAgent\node_modules\inherits\LICENSE                                       749
+D:\MyProject\TestProjectForAgent\node_modules\inherits\package.json                                  581
+D:\MyProject\TestProjectForAgent\node_modules\inherits\README.md                                     1625
+D:\MyProject\TestProjectForAgent\node_modules\ini
+D:\MyProject\TestProjectForAgent\node_modules\ini\ini.js                                             4976
+D:\MyProject\TestProjectForAgent\node_modules\ini\LICENSE                                            765
+D:\MyProject\TestProjectForAgent\node_modules\ini\package.json                                       845
+D:\MyProject\TestProjectForAgent\node_modules\ini\README.md                                          2718
+D:\MyProject\TestProjectForAgent\node_modules\mimic-response
+D:\MyProject\TestProjectForAgent\node_modules\mimic-response\index.d.ts                              599
+D:\MyProject\TestProjectForAgent\node_modules\mimic-response\index.js                                1581
+D:\MyProject\TestProjectForAgent\node_modules\mimic-response\license                                 1117
+D:\MyProject\TestProjectForAgent\node_modules\mimic-response\package.json                            768
+D:\MyProject\TestProjectForAgent\node_modules\mimic-response\readme.md                               1938
+D:\MyProject\TestProjectForAgent\node_modules\minimist
+D:\MyProject\TestProjectForAgent\node_modules\minimist\.github
+D:\MyProject\TestProjectForAgent\node_modules\minimist\.github\FUNDING.yml                           579
+D:\MyProject\TestProjectForAgent\node_modules\minimist\example
+D:\MyProject\TestProjectForAgent\node_modules\minimist\example\parse.js                              84
+D:\MyProject\TestProjectForAgent\node_modules\minimist\test
+D:\MyProject\TestProjectForAgent\node_modules\minimist\test\all_bool.js                              675
+D:\MyProject\TestProjectForAgent\node_modules\minimist\test\bool.js                                  3575
+D:\MyProject\TestProjectForAgent\node_modules\minimist\test\dash.js                                  1245
+D:\MyProject\TestProjectForAgent\node_modules\minimist\test\default_bool.js                          713
+D:\MyProject\TestProjectForAgent\node_modules\minimist\test\dotted.js                                586
+D:\MyProject\TestProjectForAgent\node_modules\minimist\test\kv_short.js                              660
+D:\MyProject\TestProjectForAgent\node_modules\minimist\test\long.js                                  649
+D:\MyProject\TestProjectForAgent\node_modules\minimist\test\num.js                                   792
+D:\MyProject\TestProjectForAgent\node_modules\minimist\test\parse.js                                 4086
+D:\MyProject\TestProjectForAgent\node_modules\minimist\test\parse_modified.js                        237
+D:\MyProject\TestProjectForAgent\node_modules\minimist\test\proto.js                                 1741
+D:\MyProject\TestProjectForAgent\node_modules\minimist\test\short.js                                 1295
+D:\MyProject\TestProjectForAgent\node_modules\minimist\test\stop_early.js                            312
+D:\MyProject\TestProjectForAgent\node_modules\minimist\test\unknown.js                               2106
+D:\MyProject\TestProjectForAgent\node_modules\minimist\test\whitespace.js                            194
+D:\MyProject\TestProjectForAgent\node_modules\minimist\.eslintrc                                     511
+D:\MyProject\TestProjectForAgent\node_modules\minimist\.nycrc                                        229
+D:\MyProject\TestProjectForAgent\node_modules\minimist\CHANGELOG.md                                  21542
+D:\MyProject\TestProjectForAgent\node_modules\minimist\index.js                                      6196
+D:\MyProject\TestProjectForAgent\node_modules\minimist\LICENSE                                       1073
+D:\MyProject\TestProjectForAgent\node_modules\minimist\package.json                                  1788
+D:\MyProject\TestProjectForAgent\node_modules\minimist\README.md                                     3609
+D:\MyProject\TestProjectForAgent\node_modules\mkdirp-classic
+D:\MyProject\TestProjectForAgent\node_modules\mkdirp-classic\index.js                                2630
+D:\MyProject\TestProjectForAgent\node_modules\mkdirp-classic\LICENSE                                 1118
+D:\MyProject\TestProjectForAgent\node_modules\mkdirp-classic\package.json                            471
+D:\MyProject\TestProjectForAgent\node_modules\mkdirp-classic\README.md                               279
+D:\MyProject\TestProjectForAgent\node_modules\napi-build-utils
+D:\MyProject\TestProjectForAgent\node_modules\napi-build-utils\index.js                              7206
+D:\MyProject\TestProjectForAgent\node_modules\napi-build-utils\index.md                              3767
+D:\MyProject\TestProjectForAgent\node_modules\napi-build-utils\LICENSE                               1069
+D:\MyProject\TestProjectForAgent\node_modules\napi-build-utils\package.json                          1047
+D:\MyProject\TestProjectForAgent\node_modules\napi-build-utils\README.md                             2435
+D:\MyProject\TestProjectForAgent\node_modules\node-abi
+D:\MyProject\TestProjectForAgent\node_modules\node-abi\abi_registry.json                             7528
+D:\MyProject\TestProjectForAgent\node_modules\node-abi\index.js                                      6488
+D:\MyProject\TestProjectForAgent\node_modules\node-abi\LICENSE                                       1069
+D:\MyProject\TestProjectForAgent\node_modules\node-abi\package.json                                  1164
+D:\MyProject\TestProjectForAgent\node_modules\node-abi\README.md                                     1905
+D:\MyProject\TestProjectForAgent\node_modules\once
+D:\MyProject\TestProjectForAgent\node_modules\once\LICENSE                                           765
+D:\MyProject\TestProjectForAgent\node_modules\once\once.js                                           935
+D:\MyProject\TestProjectForAgent\node_modules\once\package.json                                      574
+D:\MyProject\TestProjectForAgent\node_modules\once\README.md                                         1772
+D:\MyProject\TestProjectForAgent\node_modules\prebuild-install
+D:\MyProject\TestProjectForAgent\node_modules\prebuild-install\asset.js                              1128
+D:\MyProject\TestProjectForAgent\node_modules\prebuild-install\bin.js                                2304
+D:\MyProject\TestProjectForAgent\node_modules\prebuild-install\CHANGELOG.md                          5990
+D:\MyProject\TestProjectForAgent\node_modules\prebuild-install\CONTRIBUTING.md                       218
+D:\MyProject\TestProjectForAgent\node_modules\prebuild-install\download.js                           4098
+D:\MyProject\TestProjectForAgent\node_modules\prebuild-install\error.js                              355
+D:\MyProject\TestProjectForAgent\node_modules\prebuild-install\help.txt                              1079
+D:\MyProject\TestProjectForAgent\node_modules\prebuild-install\index.js                              41
+D:\MyProject\TestProjectForAgent\node_modules\prebuild-install\LICENSE                               1079
+D:\MyProject\TestProjectForAgent\node_modules\prebuild-install\log.js                                627
+D:\MyProject\TestProjectForAgent\node_modules\prebuild-install\package.json                          1954
+D:\MyProject\TestProjectForAgent\node_modules\prebuild-install\proxy.js                              1147
+D:\MyProject\TestProjectForAgent\node_modules\prebuild-install\rc.js                                 2133
+D:\MyProject\TestProjectForAgent\node_modules\prebuild-install\README.md                             7451
+D:\MyProject\TestProjectForAgent\node_modules\prebuild-install\util.js                               4280
+D:\MyProject\TestProjectForAgent\node_modules\pump
+D:\MyProject\TestProjectForAgent\node_modules\pump\.github
+D:\MyProject\TestProjectForAgent\node_modules\pump\.github\FUNDING.yml                               39
+D:\MyProject\TestProjectForAgent\node_modules\pump\.travis.yml                                       58
+D:\MyProject\TestProjectForAgent\node_modules\pump\empty.js                                          22
+D:\MyProject\TestProjectForAgent\node_modules\pump\index.js                                          2292
+D:\MyProject\TestProjectForAgent\node_modules\pump\LICENSE                                           1078
+D:\MyProject\TestProjectForAgent\node_modules\pump\package.json                                      618
+D:\MyProject\TestProjectForAgent\node_modules\pump\README.md                                         2449
+D:\MyProject\TestProjectForAgent\node_modules\pump\SECURITY.md                                       193
+D:\MyProject\TestProjectForAgent\node_modules\pump\test-browser.js                                   1172
+D:\MyProject\TestProjectForAgent\node_modules\pump\test-node.js                                      992
+D:\MyProject\TestProjectForAgent\node_modules\rc
+D:\MyProject\TestProjectForAgent\node_modules\rc\lib
+D:\MyProject\TestProjectForAgent\node_modules\rc\lib\utils.js                                        2759
+D:\MyProject\TestProjectForAgent\node_modules\rc\test
+D:\MyProject\TestProjectForAgent\node_modules\rc\test\ini.js                                         312
+D:\MyProject\TestProjectForAgent\node_modules\rc\test\nested-env-vars.js                             1392
+D:\MyProject\TestProjectForAgent\node_modules\rc\test\test.js                                        1176
+D:\MyProject\TestProjectForAgent\node_modules\rc\browser.js                                          137
+D:\MyProject\TestProjectForAgent\node_modules\rc\cli.js                                              109
+D:\MyProject\TestProjectForAgent\node_modules\rc\index.js                                            1503
+D:\MyProject\TestProjectForAgent\node_modules\rc\LICENSE.APACHE2                                     586
+D:\MyProject\TestProjectForAgent\node_modules\rc\LICENSE.BSD                                         1516
+D:\MyProject\TestProjectForAgent\node_modules\rc\LICENSE.MIT                                         1088
+D:\MyProject\TestProjectForAgent\node_modules\rc\package.json                                        695
+D:\MyProject\TestProjectForAgent\node_modules\rc\README.md                                           5982
+D:\MyProject\TestProjectForAgent\node_modules\readable-stream
+D:\MyProject\TestProjectForAgent\node_modules\readable-stream\lib
+D:\MyProject\TestProjectForAgent\node_modules\readable-stream\lib\internal
+D:\MyProject\TestProjectForAgent\node_modules\readable-stream\lib\internal\streams
+D:\MyProject\TestProjectForAgent\node_modules\readable-stream\lib\internal\streams\async_iterator.js 6468
+D:\MyProject\TestProjectForAgent\node_modules\readable-stream\lib\internal\streams\buffer_list.js    6905
+D:\MyProject\TestProjectForAgent\node_modules\readable-stream\lib\internal\streams\destroy.js        3109
+D:\MyProject\TestProjectForAgent\node_modules\readable-stream\lib\internal\streams\end-of-stream.js  3084
+D:\MyProject\TestProjectForAgent\node_modules\readable-stream\lib\internal\streams\from-browser.js   101
+D:\MyProject\TestProjectForAgent\node_modules\readable-stream\lib\internal\streams\from.js           3668
+D:\MyProject\TestProjectForAgent\node_modules\readable-stream\lib\internal\streams\pipeline.js       2416
+D:\MyProject\TestProjectForAgent\node_modules\readable-stream\lib\internal\streams\state.js          745
+D:\MyProject\TestProjectForAgent\node_modules\readable-stream\lib\internal\streams\stream-browser.js 49
+D:\MyProject\TestProjectForAgent\node_modules\readable-stream\lib\internal\streams\stream.js         36
+D:\MyProject\TestProjectForAgent\node_modules\readable-stream\lib\_stream_duplex.js                  4381
+D:\MyProject\TestProjectForAgent\node_modules\readable-stream\lib\_stream_passthrough.js             1628
+D:\MyProject\TestProjectForAgent\node_modules\readable-stream\lib\_stream_readable.js                36023
+D:\MyProject\TestProjectForAgent\node_modules\readable-stream\lib\_stream_transform.js               7936
+D:\MyProject\TestProjectForAgent\node_modules\readable-stream\lib\_stream_writable.js                21907
+D:\MyProject\TestProjectForAgent\node_modules\readable-stream\CONTRIBUTING.md                        1443
+D:\MyProject\TestProjectForAgent\node_modules\readable-stream\errors-browser.js                      4197
+D:\MyProject\TestProjectForAgent\node_modules\readable-stream\errors.js                              3715
+D:\MyProject\TestProjectForAgent\node_modules\readable-stream\experimentalWarning.js                 460
+D:\MyProject\TestProjectForAgent\node_modules\readable-stream\GOVERNANCE.md                          5550
+D:\MyProject\TestProjectForAgent\node_modules\readable-stream\LICENSE                                2337
+D:\MyProject\TestProjectForAgent\node_modules\readable-stream\package.json                           1886
+D:\MyProject\TestProjectForAgent\node_modules\readable-stream\readable-browser.js                    488
+D:\MyProject\TestProjectForAgent\node_modules\readable-stream\readable.js                            729
+D:\MyProject\TestProjectForAgent\node_modules\readable-stream\README.md                              4710
+D:\MyProject\TestProjectForAgent\node_modules\safe-buffer
+D:\MyProject\TestProjectForAgent\node_modules\safe-buffer\index.d.ts                                 8738
+D:\MyProject\TestProjectForAgent\node_modules\safe-buffer\index.js                                   1670
+D:\MyProject\TestProjectForAgent\node_modules\safe-buffer\LICENSE                                    1081
+D:\MyProject\TestProjectForAgent\node_modules\safe-buffer\package.json                               1057
+D:\MyProject\TestProjectForAgent\node_modules\safe-buffer\README.md                                  19555
+D:\MyProject\TestProjectForAgent\node_modules\semver
+D:\MyProject\TestProjectForAgent\node_modules\semver\bin
+D:\MyProject\TestProjectForAgent\node_modules\semver\bin\semver.js                                   4957
+D:\MyProject\TestProjectForAgent\node_modules\semver\classes
+D:\MyProject\TestProjectForAgent\node_modules\semver\classes\comparator.js                           3631
+D:\MyProject\TestProjectForAgent\node_modules\semver\classes\index.js                                143
+D:\MyProject\TestProjectForAgent\node_modules\semver\classes\range.js                                15647
+D:\MyProject\TestProjectForAgent\node_modules\semver\classes\semver.js                               9891
+D:\MyProject\TestProjectForAgent\node_modules\semver\functions
+D:\MyProject\TestProjectForAgent\node_modules\semver\functions\clean.js                              205
+D:\MyProject\TestProjectForAgent\node_modules\semver\functions\cmp.js                                961
+D:\MyProject\TestProjectForAgent\node_modules\semver\functions\coerce.js                             2004
+D:\MyProject\TestProjectForAgent\node_modules\semver\functions\compare-build.js                      281
+D:\MyProject\TestProjectForAgent\node_modules\semver\functions\compare-loose.js                      132
+D:\MyProject\TestProjectForAgent\node_modules\semver\functions\compare.js                            170
+D:\MyProject\TestProjectForAgent\node_modules\semver\functions\diff.js                               1423
+D:\MyProject\TestProjectForAgent\node_modules\semver\functions\eq.js                                 126
+D:\MyProject\TestProjectForAgent\node_modules\semver\functions\gt.js                                 124
+D:\MyProject\TestProjectForAgent\node_modules\semver\functions\gte.js                                127
+D:\MyProject\TestProjectForAgent\node_modules\semver\functions\inc.js                                478
+D:\MyProject\TestProjectForAgent\node_modules\semver\functions\lt.js                                 124
+D:\MyProject\TestProjectForAgent\node_modules\semver\functions\lte.js                                127
+D:\MyProject\TestProjectForAgent\node_modules\semver\functions\major.js                              136
+D:\MyProject\TestProjectForAgent\node_modules\semver\functions\minor.js                              136
+D:\MyProject\TestProjectForAgent\node_modules\semver\functions\neq.js                                128
+D:\MyProject\TestProjectForAgent\node_modules\semver\functions\parse.js                              331
+D:\MyProject\TestProjectForAgent\node_modules\semver\functions\patch.js                              136
+D:\MyProject\TestProjectForAgent\node_modules\semver\functions\prerelease.js                         234
+D:\MyProject\TestProjectForAgent\node_modules\semver\functions\rcompare.js                           132
+D:\MyProject\TestProjectForAgent\node_modules\semver\functions\rsort.js                              163
+D:\MyProject\TestProjectForAgent\node_modules\semver\functions\satisfies.js                          247
+D:\MyProject\TestProjectForAgent\node_modules\semver\functions\sort.js                               161
+D:\MyProject\TestProjectForAgent\node_modules\semver\functions\truncate.js                           1021
+D:\MyProject\TestProjectForAgent\node_modules\semver\functions\valid.js                              176
+D:\MyProject\TestProjectForAgent\node_modules\semver\internal
+D:\MyProject\TestProjectForAgent\node_modules\semver\internal\constants.js                           873
+D:\MyProject\TestProjectForAgent\node_modules\semver\internal\debug.js                               240
+D:\MyProject\TestProjectForAgent\node_modules\semver\internal\identifiers.js                         525
+D:\MyProject\TestProjectForAgent\node_modules\semver\internal\lrucache.js                            802
+D:\MyProject\TestProjectForAgent\node_modules\semver\internal\parse-options.js                       338
+D:\MyProject\TestProjectForAgent\node_modules\semver\internal\re.js                                  8139
+D:\MyProject\TestProjectForAgent\node_modules\semver\ranges
+D:\MyProject\TestProjectForAgent\node_modules\semver\ranges\gtr.js                                   231
+D:\MyProject\TestProjectForAgent\node_modules\semver\ranges\intersects.js                            224
+D:\MyProject\TestProjectForAgent\node_modules\semver\ranges\ltr.js                                   227
+D:\MyProject\TestProjectForAgent\node_modules\semver\ranges\max-satisfying.js                        593
+D:\MyProject\TestProjectForAgent\node_modules\semver\ranges\min-satisfying.js                        591
+D:\MyProject\TestProjectForAgent\node_modules\semver\ranges\min-version.js                           1514
+D:\MyProject\TestProjectForAgent\node_modules\semver\ranges\outside.js                               2204
+D:\MyProject\TestProjectForAgent\node_modules\semver\ranges\simplify.js                              1355
+D:\MyProject\TestProjectForAgent\node_modules\semver\ranges\subset.js                                7478
+D:\MyProject\TestProjectForAgent\node_modules\semver\ranges\to-comparators.js                        282
+D:\MyProject\TestProjectForAgent\node_modules\semver\ranges\valid.js                                 326
+D:\MyProject\TestProjectForAgent\node_modules\semver\index.js                                        2691
+D:\MyProject\TestProjectForAgent\node_modules\semver\LICENSE                                         765
+D:\MyProject\TestProjectForAgent\node_modules\semver\package.json                                    1661
+D:\MyProject\TestProjectForAgent\node_modules\semver\preload.js                                      83
+D:\MyProject\TestProjectForAgent\node_modules\semver\range.bnf                                       702
+D:\MyProject\TestProjectForAgent\node_modules\semver\README.md                                       25669
+D:\MyProject\TestProjectForAgent\node_modules\simple-concat
+D:\MyProject\TestProjectForAgent\node_modules\simple-concat\test
+D:\MyProject\TestProjectForAgent\node_modules\simple-concat\test\basic.js                            825
+D:\MyProject\TestProjectForAgent\node_modules\simple-concat\.travis.yml                              37
+D:\MyProject\TestProjectForAgent\node_modules\simple-concat\index.js                                 392
+D:\MyProject\TestProjectForAgent\node_modules\simple-concat\LICENSE                                  1081
+D:\MyProject\TestProjectForAgent\node_modules\simple-concat\package.json                             1032
+D:\MyProject\TestProjectForAgent\node_modules\simple-concat\README.md                                1257
+D:\MyProject\TestProjectForAgent\node_modules\simple-get
+D:\MyProject\TestProjectForAgent\node_modules\simple-get\.github
+D:\MyProject\TestProjectForAgent\node_modules\simple-get\.github\workflows
+D:\MyProject\TestProjectForAgent\node_modules\simple-get\.github\workflows\ci.yml                    483
+D:\MyProject\TestProjectForAgent\node_modules\simple-get\.github\dependabot.yml                      300
+D:\MyProject\TestProjectForAgent\node_modules\simple-get\index.js                                    4057
+D:\MyProject\TestProjectForAgent\node_modules\simple-get\LICENSE                                     1081
+D:\MyProject\TestProjectForAgent\node_modules\simple-get\package.json                                1444
+D:\MyProject\TestProjectForAgent\node_modules\simple-get\README.md                                   7606
+D:\MyProject\TestProjectForAgent\node_modules\string_decoder
+D:\MyProject\TestProjectForAgent\node_modules\string_decoder\lib
+D:\MyProject\TestProjectForAgent\node_modules\string_decoder\lib\string_decoder.js                   9465
+D:\MyProject\TestProjectForAgent\node_modules\string_decoder\LICENSE                                 2338
+D:\MyProject\TestProjectForAgent\node_modules\string_decoder\package.json                            823
+D:\MyProject\TestProjectForAgent\node_modules\string_decoder\README.md                               1801
+D:\MyProject\TestProjectForAgent\node_modules\strip-json-comments
+D:\MyProject\TestProjectForAgent\node_modules\strip-json-comments\index.js                           1700
+D:\MyProject\TestProjectForAgent\node_modules\strip-json-comments\license                            1119
+D:\MyProject\TestProjectForAgent\node_modules\strip-json-comments\package.json                       749
+D:\MyProject\TestProjectForAgent\node_modules\strip-json-comments\readme.md                          1493
+D:\MyProject\TestProjectForAgent\node_modules\tar-fs
+D:\MyProject\TestProjectForAgent\node_modules\tar-fs\test
+D:\MyProject\TestProjectForAgent\node_modules\tar-fs\test\fixtures
+D:\MyProject\TestProjectForAgent\node_modules\tar-fs\test\fixtures\a
+D:\MyProject\TestProjectForAgent\node_modules\tar-fs\test\fixtures\a\hello.txt                       12
+D:\MyProject\TestProjectForAgent\node_modules\tar-fs\test\fixtures\b
+D:\MyProject\TestProjectForAgent\node_modules\tar-fs\test\fixtures\b\a
+D:\MyProject\TestProjectForAgent\node_modules\tar-fs\test\fixtures\b\a\test.txt                      5
+D:\MyProject\TestProjectForAgent\node_modules\tar-fs\test\fixtures\d
+D:\MyProject\TestProjectForAgent\node_modules\tar-fs\test\fixtures\d\sub-dir
+D:\MyProject\TestProjectForAgent\node_modules\tar-fs\test\fixtures\d\sub-dir\file5                   0
+D:\MyProject\TestProjectForAgent\node_modules\tar-fs\test\fixtures\d\sub-files
+D:\MyProject\TestProjectForAgent\node_modules\tar-fs\test\fixtures\d\sub-files\file3                 0
+D:\MyProject\TestProjectForAgent\node_modules\tar-fs\test\fixtures\d\sub-files\file4                 0
+D:\MyProject\TestProjectForAgent\node_modules\tar-fs\test\fixtures\d\file1                           0
+D:\MyProject\TestProjectForAgent\node_modules\tar-fs\test\fixtures\d\file2                           0
+D:\MyProject\TestProjectForAgent\node_modules\tar-fs\test\fixtures\e
+D:\MyProject\TestProjectForAgent\node_modules\tar-fs\test\fixtures\e\directory
+D:\MyProject\TestProjectForAgent\node_modules\tar-fs\test\fixtures\e\directory\.ignore               0
+D:\MyProject\TestProjectForAgent\node_modules\tar-fs\test\fixtures\e\file                            0
+D:\MyProject\TestProjectForAgent\node_modules\tar-fs\test\fixtures\invalid.tar                       2560
+D:\MyProject\TestProjectForAgent\node_modules\tar-fs\test\index.js                                   9006
+D:\MyProject\TestProjectForAgent\node_modules\tar-fs\.travis.yml                                     54
+D:\MyProject\TestProjectForAgent\node_modules\tar-fs\index.js                                        10026
+D:\MyProject\TestProjectForAgent\node_modules\tar-fs\LICENSE                                         1078
+D:\MyProject\TestProjectForAgent\node_modules\tar-fs\package.json                                    828
+D:\MyProject\TestProjectForAgent\node_modules\tar-fs\README.md                                       4897
+D:\MyProject\TestProjectForAgent\node_modules\tar-stream
+D:\MyProject\TestProjectForAgent\node_modules\tar-stream\extract.js                                  5960
+D:\MyProject\TestProjectForAgent\node_modules\tar-stream\headers.js                                  7969
+D:\MyProject\TestProjectForAgent\node_modules\tar-stream\index.js                                    72
+D:\MyProject\TestProjectForAgent\node_modules\tar-stream\LICENSE                                     1078
+D:\MyProject\TestProjectForAgent\node_modules\tar-stream\pack.js                                     5626
+D:\MyProject\TestProjectForAgent\node_modules\tar-stream\package.json                                1352
+D:\MyProject\TestProjectForAgent\node_modules\tar-stream\README.md                                   5243
+D:\MyProject\TestProjectForAgent\node_modules\tar-stream\sandbox.js                                  371
+D:\MyProject\TestProjectForAgent\node_modules\tunnel-agent
+D:\MyProject\TestProjectForAgent\node_modules\tunnel-agent\index.js                                  6884
+D:\MyProject\TestProjectForAgent\node_modules\tunnel-agent\LICENSE                                   9140
+D:\MyProject\TestProjectForAgent\node_modules\tunnel-agent\package.json                              542
+D:\MyProject\TestProjectForAgent\node_modules\tunnel-agent\README.md                                 113
+D:\MyProject\TestProjectForAgent\node_modules\util-deprecate
+D:\MyProject\TestProjectForAgent\node_modules\util-deprecate\browser.js                              1614
+D:\MyProject\TestProjectForAgent\node_modules\util-deprecate\History.md                              282
+D:\MyProject\TestProjectForAgent\node_modules\util-deprecate\LICENSE                                 1102
+D:\MyProject\TestProjectForAgent\node_modules\util-deprecate\node.js                                 123
+D:\MyProject\TestProjectForAgent\node_modules\util-deprecate\package.json                            694
+D:\MyProject\TestProjectForAgent\node_modules\util-deprecate\README.md                               1666
+D:\MyProject\TestProjectForAgent\node_modules\wrappy
+D:\MyProject\TestProjectForAgent\node_modules\wrappy\LICENSE                                         765
+D:\MyProject\TestProjectForAgent\node_modules\wrappy\package.json                                    606
+D:\MyProject\TestProjectForAgent\node_modules\wrappy\README.md                                       685
+D:\MyProject\TestProjectForAgent\node_modules\wrappy\wrappy.js                                       905
+D:\MyProject\TestProjectForAgent\node_modules\.package-lock.json                                     16545
+D:\MyProject\TestProjectForAgent\index.html                                                          33928
