@@ -196,10 +196,11 @@ export default function PromptDock({
   const selectedModelName = models.find((m) => m.id === selectedModel)?.name ?? 'Claude Opus 4.6 (Thinking)';
 
   return (
-    <div className="flex justify-center w-full flex-shrink-0 pb-5 px-6">
-      {/* Pill-shaped dock — centered, 70-80% width */}
+    <div className="w-full flex-shrink-0" style={{ paddingLeft: '16px', paddingRight: '16px', paddingTop: '10px', paddingBottom: '12px' }}>
+      {/* Pill-shaped dock — centered, full width */}
       <div
-        className="prompt-dock relative flex flex-col w-full max-w-[760px] bg-zinc-900 border border-zinc-800 rounded-2xl px-4 py-2.5 transition-shadow"
+        className="prompt-dock relative flex flex-col w-full bg-zinc-900 border border-zinc-850/80 rounded-xl transition-shadow"
+        style={{ padding: '12px 16px' }}
       >
         {/* ── Autocomplete dropdown ── */}
         {showCommands && (
@@ -236,15 +237,17 @@ export default function PromptDock({
         )}
 
         {/* ── Text input area ── */}
-        <div className="relative w-full" style={{ minHeight: 28, maxHeight: 200 }}>
+        <div className="relative w-full" style={{ minHeight: 38, maxHeight: 200 }}>
           {/* Highlight Overlay */}
           <div
             ref={overlayRef}
-            className="absolute inset-0 pointer-events-none text-[14px] leading-relaxed px-1 text-zinc-100 whitespace-pre-wrap break-words overflow-hidden"
+            className="absolute inset-0 pointer-events-none text-[14px] leading-relaxed text-zinc-100 whitespace-pre-wrap break-words overflow-hidden"
             style={{ 
               fontFamily: 'inherit',
-              paddingTop: '2px',
-              paddingBottom: '2px'
+              paddingTop: '8px',
+              paddingBottom: '8px',
+              paddingLeft: '12px',
+              paddingRight: '12px'
             }}
           >
             {highlightText(value)}
@@ -262,13 +265,23 @@ export default function PromptDock({
             onScroll={handleScroll}
             placeholder=""
             rows={1}
-            className="w-full bg-transparent border-none outline-none resize-none text-[14px] text-transparent caret-zinc-100 leading-relaxed px-1 relative z-10"
-            style={{ minHeight: 28, maxHeight: 200 }}
+            className="w-full bg-transparent border-none outline-none resize-none text-[14px] text-transparent caret-zinc-100 leading-relaxed relative z-10"
+            style={{ 
+              minHeight: 38, 
+              maxHeight: 200,
+              paddingTop: '8px',
+              paddingBottom: '8px',
+              paddingLeft: '12px',
+              paddingRight: '12px'
+            }}
           />
         </div>
 
         {/* ── Bottom toolbar ── */}
-        <div className="flex items-center justify-between mt-1.5 pt-1.5 border-t border-zinc-800">
+        <div 
+          className="flex items-center justify-between border-t border-zinc-800"
+          style={{ marginTop: '10px', paddingTop: '10px' }}
+        >
           {/* Left side: Plus, Worktree, Model selector */}
           <div className="flex items-center gap-1">
             {/* Plus / Attach */}
